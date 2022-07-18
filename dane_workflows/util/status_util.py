@@ -449,7 +449,6 @@ class SQLiteStatusHandler(StatusHandler):
             )
             if db_rows:
                 self.logger.info("Recovered a source batch from the DB")
-                self.logger.debug(db_rows)
                 self.cur_source_batch = self._to_status_rows(db_rows)
                 return True
         self.logger.info("Could not recover a source batch somehow")
@@ -480,7 +479,6 @@ class SQLiteStatusHandler(StatusHandler):
                 (proc_batch_id,),
             )
             if db_rows:
-                self.logger.debug(db_rows)
                 return self._to_status_rows(db_rows)
         return None
 
@@ -496,7 +494,6 @@ class SQLiteStatusHandler(StatusHandler):
                 (source_batch_id,),
             )
             if db_rows:
-                self.logger.debug(db_rows)
                 return self._to_status_rows(db_rows)
         return None
 
