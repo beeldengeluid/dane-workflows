@@ -1,0 +1,28 @@
+LOGGING:  # configures: dane_workflows.base_util
+  NAME : daan-asr-aws
+  LEVEL: DEBUG
+  DIR: logs  # where to store log files
+TASK_SCHEDULER:  # configures: dane_workflows.task_scheduler
+  BATCH_PREFIX: your_test  # used to track different iterations of DataProvider.get_next_batch
+  BATCH_SIZE: 5  # number of items returned by DataProvider.get_next_batch
+DATA_PROVIDER:  # configures: ExampleDataProvider
+  TYPE: ExampleDataProvider
+  CONFIG: 
+    SOURCE_BATCH_SIZE: 10
+STATUS_HANDLER:
+  TYPE: SQLiteStatusHandler
+  CONFIG:
+    DB_FILE : ../proc_stats/all_stats.db  # where to store the db
+PROC_ENV:  # configures: DANEProcessingEnvironment in data_processing.py
+  TYPE: DANEEnvironment
+  CONFIG: 
+    DANE_HOST: "your-dane-host"
+    DANE_TASK_ID: "DOWNLOAD"  # tested BG_DOWNLOAD, which works; now testing ASR
+    DANE_STATUS_DIR : ../dane_stats
+    DANE_MONITOR_INTERVAL: 3  # seconds
+    DANE_ES_HOST: 'your-dane-es-host'
+    DANE_ES_PORT: 1234
+    DANE_ES_INDEX: 'dane-index-your-env'
+    DANE_ES_QUERY_TIMEOUT: 20 #seconds?
+EXPORTER:
+  TYPE: ExampleExporter

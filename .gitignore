@@ -1,0 +1,11 @@
+config.yml
+dist
+queries
+logs
+*.pyc
+__pycache__
+proc_stats
+dane_stats
+.idea*
+.pytest_cache
+.coverage
