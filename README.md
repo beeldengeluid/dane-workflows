@@ -1,4 +1,4 @@
-# dane-workflows
+# Introduction
 
 Python library for creating "processing workflows" that use [DANE environments](https://github.com/beeldengeluid/dane-environments), which in a nutshell offer, depending on the setup of each environment, an API for some kind of multi-media processing, e.g.:
 
@@ -17,6 +17,41 @@ A workflow is able to iteratively:
 - wait for the processing environment to complete its work
 - obtain results from the processing environment
 - pass results to an `Exporter`, which typically reconsiles the processed data with the source data     
+
+# Getting started
+
+## Prerequisites
+
+* Python >= 3.8 <= 3.10
+* [Poetry](https://python-poetry.org/)
+
+## Installation
+
+Run `poetry install`. After completion run:
+
+```
+poetry shell
+```
+
+To test the contents of this repository works well, run:
+
+```
+./scripts/check-project.sh
+```
+
+TODO finalise
+
+# Usage
+
+TODO (add example workflows to this repo, then write this)
+
+# Roadmap
+
+[] Finalise initial README
+[] Implement more advanced recovery
+[] Add example workflows (refer in README)
+
+See the [open issues](https://github.com/beeldengeluid/dane-workflows/issues) for a full list of proposed features, known issues and user questions.
 
 # This library
 
@@ -40,6 +75,16 @@ Iteratively called by the `TaskScheduler` to submit batches of data to an (exter
 
 This library contains a full implementation, `DANEEnvironment`, for interacting with [DANE environments](https://github.com/beeldengeluid/dane-environments), but other environments/APIs can be supported by subclassing from `ProcessingEnvironment`.
 
-# Exporter
+## Exporter
 
 Called by the `TaskScheduler` with output data from a processing environment. No default implementation is available (yet), since this is typically the most use-case sensitive part of any workflow, meaning you should decide what to do with the output data (by subclassing `Exporter`).
+
+
+# License
+Distributed under the MIT License. See `LICENSE.txt` for more information.
+
+
+# Contact
+Use the [issue tracker](https://github.com/beeldengeluid/dane-workflows/issues) for any questions concerning this repository
+
+Project Link: https://github.com/beeldengeluid/dane-workflows
