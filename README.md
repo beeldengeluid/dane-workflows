@@ -47,10 +47,10 @@ TODO (add example workflows to this repo, then write this)
 
 # Roadmap
 
-- [] Finalise initial README
-- [] Implement more advanced recovery
-- [] Add example workflows (refer in README)
-- [] Add [Python docstring](https://www.askpython.com/python/python-docstring)
+- [ ] Finalise initial README
+- [ ] Implement more advanced recovery
+- [ ] Add example workflows (refer in README)
+- [ ] Add [Python docstring](https://www.askpython.com/python/python-docstring)
 
 See the [open issues](https://github.com/beeldengeluid/dane-workflows/issues) for a full list of proposed features, known issues and user questions.
 
