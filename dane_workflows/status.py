@@ -12,8 +12,6 @@ from dane_workflows.util.base_util import (
 import sqlite3
 from sqlite3 import Error
 
-# from dane_workflows.data_provider import DataProvider
-
 """
 Represents whether the DANE processing of a resource was successful or not
 Possibly, other statuses will be added later on
@@ -31,10 +29,11 @@ class ProcessingStatus(IntEnum):
     # row-level state
     PROCESSING = 4  # the item is currently processing in the processing env
     PROCESSED = 5  # the item was successfully processed by the processing env
-    RESULTS_FETCHED = 6  # the item's output data was successfully fetched from the processing env
-    EXPORTED = 7  # processing data was reconsiled with source
+    RESULTS_FETCHED = (
+        6  # the item's output data was successfully fetched from the processing env
+    )
+    FINISHED = 7  # the item was successfully processed
     ERROR = 8  # the item failed to process properly (proc_error_code will be assigned)
-    FINISHED = 9  # the item was successfully processed
 
     @staticmethod
     def completed_statuses():
@@ -51,7 +50,6 @@ class ProcessingStatus(IntEnum):
             ProcessingStatus.PROCESSING,
             ProcessingStatus.PROCESSED,
             ProcessingStatus.RESULTS_FETCHED,
-            ProcessingStatus.EXPORTED,
         ]
 
 
@@ -137,10 +135,6 @@ class StatusHandler(ABC):
     # called via recover() on start-up of the TaskScheduler
     @abstractmethod
     def _recover_source_batch(self):
-        raise NotImplementedError("Requires implementation")
-
-    @abstractmethod
-    def _recover_proc_batch(self):
         raise NotImplementedError("Requires implementation")
 
     # TODO change this function so it just persists all provided status_rows
@@ -302,7 +296,6 @@ class StatusHandler(ABC):
                 row.proc_error_code = proc_error_code
         return status_rows
 
-    # TODO make sure that this function can save regardless of source_batch_id!
     def persist(self, status_rows: List[StatusRow]) -> bool:
         if not status_rows or type(status_rows) != list:
             self.logger.warning(
@@ -321,11 +314,22 @@ class StatusHandler(ABC):
         return False
 
     def recover(
-        self,
+        self, data_provider
     ) -> Tuple[bool, Optional[List[StatusRow]]]:  # returns StatusRows of proc_batch
+
+        # first try to recover by checking for existing status_rows
         source_batch_recovered = self._recover_source_batch()
+
+        # if nothing was found, try to start afresh, using the data_provider
         if source_batch_recovered is False:
-            self.logger.warning("Could not recover any source batch")
+            self.logger.info("No source_batch could be recovered, starting afresh")
+            status_rows = data_provider.fetch_source_batch_data(0)
+            if status_rows is not None:
+                self.logger.info("Starting from the first source_batch")
+                self.set_current_source_batch(status_rows)
+                source_batch_recovered = True
+        else:
+            self.logger.info("Found an earlier source_batch to recover")
 
         cur_proc_batch = self._recover_proc_batch()
         if cur_proc_batch is None:
@@ -334,6 +338,14 @@ class StatusHandler(ABC):
             source_batch_recovered,
             cur_proc_batch,
         )  # TaskScheduler should sync this with the proc env last status
+
+    def _recover_proc_batch(self) -> Optional[List[StatusRow]]:
+        last_proc_id = self.get_last_proc_batch_id()
+        return (
+            self.get_status_rows_of_proc_batch(last_proc_id)
+            if last_proc_id != -1
+            else None
+        )
 
 
 class ExampleStatusHandler(StatusHandler):
@@ -348,11 +360,6 @@ class ExampleStatusHandler(StatusHandler):
     def _recover_source_batch(self) -> bool:
         self.logger.debug(f"{self.__class__.__name__} cannot recover any status")
         self.cur_source_batch: List[StatusRow] = []
-        return False  # in memory only, so cannot recover
-
-    # called on start-up of the TaskScheduler
-    def _recover_proc_batch(self) -> bool:
-        self.logger.debug(f"{self.__class__.__name__} cannot recover any status")
         return False  # in memory only, so cannot recover
 
     def _persist(self, status_rows: List[StatusRow]) -> bool:
@@ -453,11 +460,6 @@ class SQLiteStatusHandler(StatusHandler):
                 return True
         self.logger.info("Could not recover a source batch somehow")
         return False
-
-    # called on start-up of the TaskScheduler
-    def _recover_proc_batch(self) -> bool:
-        self.logger.debug(f"{self.__class__.__name__} cannot recover any status")
-        return False  # TODO
 
     def _persist(self, status_rows: List[StatusRow]) -> bool:
         conn = self._create_connection(self.DB_FILE)
