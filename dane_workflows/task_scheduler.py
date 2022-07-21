@@ -110,24 +110,6 @@ class TaskScheduler(object):
     def _to_dane_batch_name(self, proc_batch_id: int) -> str:
         return f"{self.BATCH_PREFIX}__{proc_batch_id}"
 
-    def _update_status(
-        self,
-        status_rows: List[StatusRow],
-        status: ProcessingStatus,
-        proc_batch_id: int = -1,
-        proc_status_msg: str = None,
-        proc_error_code: ErrorCode = None,
-    ):
-        self.status_handler.persist(
-            self.status_handler.update_status_rows(
-                status_rows,
-                status=status,
-                proc_batch_id=proc_batch_id,
-                proc_status_msg=proc_status_msg,
-                proc_error_code=proc_error_code,
-            )
-        )
-
     # TODO implement proper recovery
     def run(self):
         #  fetch the last proc_batch_id via the StatusHandler
@@ -145,36 +127,29 @@ class TaskScheduler(object):
                 proc_batch_id, self.BATCH_SIZE
             )
             if status_rows_dp is None:
-                self.logger.debug("No source batch remaining, quitting...")
+                self.logger.debug("No source data remaining, all done, quitting...")
                 break
 
             # then register the batch in the data processing environment
-            self.logger.debug(f"register_batch: {proc_batch_id} ({self.BATCH_SIZE})")
+            self.logger.debug(f"Registering batch: {proc_batch_id} ({self.BATCH_SIZE})")
+
+            # returned status_rows now have proc_id so now we have a reference ID in the ProcessingEnvironment
             status_rows_dpe = self.data_processing_env.register_batch(
                 proc_batch_id, status_rows_dp
             )
             if status_rows_dpe is not None:
-                # now contains the proc_id so now we have a reference ID in the ProcessingEnvironment
-                self.status_handler.persist(status_rows_dpe)
-                # self.logger.debug("BREAKING OFF THE LOOP TO TEST")
-                # break
-
+                self.logger.debug(f"Successfully registered batch: {proc_batch_id} ({self.BATCH_SIZE})")
+                # Alright let's ask the proc env to start processing
                 proc_resp = self.data_processing_env.process_batch(proc_batch_id)
-                # start the processing
-                if proc_resp.success:
-                    self._update_status(
-                        status_rows_dpe,
-                        status=ProcessingStatus.PROCESSING,
-                        proc_batch_id=proc_batch_id,
-                        proc_status_msg=proc_resp.status_text,
-                    )
+                
+                if proc_resp is not None:
                     self.logger.debug(
-                        f"process_batch: {proc_batch_id} ({self.BATCH_SIZE})"
+                        f"Successfully triggered the process for: {proc_batch_id} ({self.BATCH_SIZE})"
                     )
 
                     # monitor the processing, until it returns the results
                     self.logger.debug(
-                        f"data_processing_env: {proc_batch_id} ({self.BATCH_SIZE})"
+                        f"Start monitoring proc batch until it finishes: {proc_batch_id} ({self.BATCH_SIZE})"
                     )
 
                     # TODO the monitor function still needs to return a list of updated status_rows
@@ -183,10 +158,7 @@ class TaskScheduler(object):
                     )
                     if status_rows_monitor:
                         # update the data provider with the processing status for each document in the batch
-                        self.logger.debug(f"Received results for batch {proc_batch_id}")
-                        self.status_handler.persist(
-                            status_rows_monitor
-                        )  # TODO save status in monitor function
+                        self.logger.debug(f"Received results for proc_batch: {proc_batch_id}")                        
 
                         # now fetch the results from the ProcessingEnvironment
                         processing_results = (
@@ -201,40 +173,24 @@ class TaskScheduler(object):
                             # TODO function should return something the TH can react on
                         else:
                             self.logger.error(
-                                f"Did not receive any processing results for {proc_batch_id}"
+                                f"Did not receive any processing results for {proc_batch_id}, quitting"
                             )
                             break
                     else:
                         self.logger.error(
-                            f"Did not receive any results for batch {proc_batch_id}"
+                            f"Did not receive any results for batch {proc_batch_id}, quitting"
                         )
                         break
                 else:
-                    self._update_status(
-                        status_rows_dpe,
-                        status=ProcessingStatus.ERROR,
-                        proc_batch_id=proc_batch_id,
-                        proc_status_msg=proc_resp.status_text,
-                        proc_error_code=ErrorCode.BATCH_PROCESSING_NOT_STARTED,
-                    )
-                    self.logger.error(f"Could not process batch {proc_batch_id}")
+                    self.logger.error(f"Could not process batch {proc_batch_id}, quitting")
                     break  # finish the loop for now
 
                 # update the proc_batch_id and continue on
                 proc_batch_id += 1
 
             else:
-                self.logger.error(f"Could not register batch {proc_batch_id}")
-                self._update_status(
-                    status_rows_dp,
-                    status=ProcessingStatus.ERROR,
-                    proc_batch_id=proc_batch_id,
-                    proc_status_msg=f"Could not register batch {proc_batch_id}",
-                    proc_error_code=ErrorCode.BATCH_REGISTER_FAILED,
-                )
+                self.logger.error(f"Could not register batch {proc_batch_id}, quitting")
                 break
-
-            # break  # finish the loop after one iteration for now
 
 
 # test a full workflow

@@ -30,10 +30,11 @@ class ProcessingStatus(IntEnum):
 
     # row-level state
     PROCESSING = 4  # the item is currently processing in the processing env
-    PROCESSED = 5  # the item was successfully processed by the processing environment
-    EXPORTED = 6  # processing data was reconsiled with source
-    ERROR = 7  # the item failed to process properly (proc_error_code will be assigned)
-    FINISHED = 8  # the item was successfully processed
+    PROCESSED = 5  # the item was successfully processed by the processing env
+    RESULTS_FETCHED = 6  # the item's output data was successfully fetched from the processing env
+    EXPORTED = 7  # processing data was reconsiled with source
+    ERROR = 8  # the item failed to process properly (proc_error_code will be assigned)
+    FINISHED = 9  # the item was successfully processed
 
     @staticmethod
     def completed_statuses():
@@ -49,6 +50,7 @@ class ProcessingStatus(IntEnum):
             ProcessingStatus.BATCH_REGISTERED,
             ProcessingStatus.PROCESSING,
             ProcessingStatus.PROCESSED,
+            ProcessingStatus.RESULTS_FETCHED,
             ProcessingStatus.EXPORTED,
         ]
 
@@ -98,14 +100,12 @@ class StatusRow:
     ]  # in case of status == ERROR, learn more about why
 
     def __hash__(self):
-        return hash(self.target_id)
+        return hash(f"{self.target_id}{self.target_url}")
 
     def __eq__(self, other):
-        return other.target_id == self.target_id
+        return other.target_id == self.target_id and other.target_url == self.target_url
 
 
-# TODO implement an ExampleStatusHandler as well
-# TODO move to status_handler.py (outside of the util package)
 class StatusHandler(ABC):
     def __init__(self, config):
 
