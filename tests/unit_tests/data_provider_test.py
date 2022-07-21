@@ -1,7 +1,7 @@
 import pytest
 from mockito import unstub, when, verify, ARGS
 from dane_workflows.data_provider import ExampleDataProvider
-from dane_workflows.util.status_util import (
+from dane_workflows.status import (
     ExampleStatusHandler,
     ProcessingStatus,
 )

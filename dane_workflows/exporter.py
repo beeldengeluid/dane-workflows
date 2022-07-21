@@ -3,7 +3,7 @@ from typing import List
 
 from dane_workflows.data_processing import ProcessingResult
 from dane_workflows.util.base_util import get_logger
-from dane_workflows.util.status_util import StatusHandler, ProcessingStatus
+from dane_workflows.status import StatusHandler, ProcessingStatus
 
 """
 This class is owned by a TaskScheduler to export results obtained from a processing environment (such as DANE)

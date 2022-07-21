@@ -6,7 +6,7 @@ from dane_workflows.util.base_util import (
     check_setting,
     load_config,
 )
-from dane_workflows.util.status_util import StatusHandler, StatusRow, ProcessingStatus
+from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus
 
 """
 This class is owned by a TaskScheduler, which expects this class to provide the next n DAEN Documents
@@ -177,7 +177,7 @@ class ExampleDataProvider(DataProvider):
 
 # Test your DataProvider in isolation
 if __name__ == "__main__":
-    from dane_workflows.util.status_util import SQLiteStatusHandler
+    from dane_workflows.status import SQLiteStatusHandler
 
     config = load_config("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)

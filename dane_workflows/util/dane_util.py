@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from elasticsearch7 import Elasticsearch
 from dane import Document
-from dane_workflows.util.status_util import StatusRow, ProcessingStatus
+from dane_workflows.status import StatusRow, ProcessingStatus
 
 
 @unique

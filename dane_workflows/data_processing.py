@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from uuid import uuid4
-from typing import List
+from typing import List, Optional
 from dane_workflows.util.base_util import (
     get_logger,
     check_setting,
     load_config,
     validate_file_paths,
 )
-from dane_workflows.util.status_util import StatusHandler, StatusRow, ProcessingStatus
+from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus
 from dane_workflows.util.dane_util import DANEHandler, Task, Result
 from time import sleep
 from dataclasses import dataclass
@@ -69,7 +69,7 @@ class DataProcessingEnvironment(ABC):
     @abstractmethod
     def monitor_batch(
         self, proc_batch_id: int
-    ) -> List[StatusRow]:  # containing ids + statusses
+    ) -> Optional[List[StatusRow]]:  # containing ids + statusses
         raise NotImplementedError(
             f"Implement to feed monitor batch with id {proc_batch_id}"
         )
@@ -149,11 +149,12 @@ class DANEEnvironment(DataProcessingEnvironment):
         return ProcEnvResponse(success, status_code, status_text)
 
     # When finished returns a list of updated StatusRows
-    def monitor_batch(self, proc_batch_id: int) -> List[StatusRow]:
+    def monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
         self.logger.debug(f"Monitoring DANE batch #{proc_batch_id}")
         tasks_of_batch = self.dane_handler.monitor_batch(
             proc_batch_id, False  # no verbose output
         )
+        # TODO update the status_rows in the status handler
         return self._to_status_rows(proc_batch_id, tasks_of_batch)
 
     # TaskScheduler calls this to fetch results of a finished batch
@@ -241,12 +242,15 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
         return ProcEnvResponse(True, 200, "All fine n dandy")
 
     # pretends that within 3 seconds the whole batch was successfully processed
-    def monitor_batch(self, proc_batch_id: int) -> List[StatusRow]:
+    def monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
         self.logger.debug(f"Monitoring batch: {proc_batch_id}")
         batch = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
-        for row in batch:
-            row.status = ProcessingStatus.PROCESSED  # processing completed
-        sleep(3)
+        if batch is not None:
+            for row in batch:
+                row.status = ProcessingStatus.PROCESSED  # processing completed
+            sleep(3)
+        else:
+            self.logger.warning(f"Processing Batch {proc_batch_id} failed")
         return batch
 
     def fetch_results_of_batch(self, proc_batch_id: int) -> List[ProcessingResult]:
@@ -255,7 +259,7 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
 
 # Test your DataProcessingEnvironment in isolation
 if __name__ == "__main__":
-    from dane_workflows.util.status_util import SQLiteStatusHandler
+    from dane_workflows.status import SQLiteStatusHandler
 
     config = load_config("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)

@@ -1,11 +1,10 @@
 # from abc import ABC, abstractmethod
-import datetime
 from typing import List, Type
 import dane_workflows.util.base_util as base_util
 from dane_workflows.data_provider import DataProvider, ProcessingStatus
 from dane_workflows.data_processing import DataProcessingEnvironment
 from dane_workflows.exporter import Exporter
-from dane_workflows.util.status_util import StatusHandler, StatusRow, ErrorCode
+from dane_workflows.status import StatusHandler, StatusRow, ErrorCode
 
 
 """
@@ -36,7 +35,6 @@ class TaskScheduler(object):
         ]  # to keep track of the batches
 
         self.logger = base_util.init_logger(config)  # first init the logger
-        self.date_started = datetime.datetime.now()
 
         # first initialize the status handler and pass it to the data provider and processing env
         self.status_handler: StatusHandler = status_handler(config)
@@ -47,6 +45,7 @@ class TaskScheduler(object):
             config, self.status_handler, unit_test
         )  # instantiate the DataProcessingEnvironment
         self.exporter = exporter(config, self.status_handler, unit_test)
+
         # always try to recover (without status files, the first source batch will be created)
         if unit_test is False:
             # TODO this should fetch the last source_batch_id and the last proc_batch_id, then:
@@ -129,93 +128,6 @@ class TaskScheduler(object):
             )
         )
 
-    def check_status(self):
-        """Collects status information about this TaskScheduler and returns it in a dict
-        Returns: dict with status information
-        "Date started"  - the date the TaskScheduler was initialised
-        "Last batch processed" - processing batch ID of the last batch processed
-        "Last source batch retrieved" - source batch ID of the last batch retrieved from the data provider
-        "Status information for last batch processed" - dict of statuses and their counts for the last batch processed
-        "Error information for last batch processed"- dict of error codes and their counts for the last batch processed
-        "Status information for last source batch retrieved" - dict of statuses and their counts for the last batch
-        retrieved from the data provider
-        "Error information for last source batch retrieved"- dict of error codes and their counts for the last batch
-        retrieved from the data provider
-        """
-
-        last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
-        last_source_batch_id = self.status_handler.get_last_source_batch_id()
-
-        return {
-            # get date started
-            "Date started": self.date_started.strftime("%Y-%m-%d"),
-            # get last batch processed
-            "Last batch processed": last_proc_batch_id,
-            # get last batch retrieved
-            "Last source batch retrieved": last_source_batch_id,
-            # get status and error code information for last batch processed
-            "Status information for last batch processed": [
-                f"{ProcessingStatus(status)}: {count}"
-                for status, count in self.status_handler.get_status_counts_for_proc_batch_id(
-                    last_proc_batch_id
-                ).items()
-            ],
-            "Error information for last batch processed": [
-                f"{ErrorCode(error_code)}: {count}"
-                for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
-                    last_proc_batch_id
-                ).items()
-            ],
-            # get status and error code information for last batch retrieved
-            "Status information for last source batch retrieved": [
-                f"{ProcessingStatus(status)}: {count}"
-                for status, count in self.status_handler.get_status_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-            ],
-            "Error information for last source batch retrieved": [
-                f"{ErrorCode(error_code)}: {count}"
-                for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-            ],
-        }
-
-    def get_detailed_status_report(self, include_extra_info):
-        """Gets a detailed status report on all batches completed by this TaskScheduler
-        Args:
-            - include_extra_info - if this is true, then an overview of statuses per value of the extra_info
-            field in the StatusRow is returned
-        Returns a dict of information:
-        - "Completed semantic source batch IDs" - a list of all completed semantic source batch IDs
-        - "Uncompleted semantic source batch IDs" - a list of all uncompleted semantic source batch IDs
-        - "Current semantic source batch ID" - the semantic source batch currently being processed
-        - "Status overview" - a dict with the statuses and their counts over all batches
-        - "Error overview" - a dict with the error codes and their counts over all batches
-        - "Status overview per extra info" - optional, if include_extra_info is true. A dict with status overview
-        per value of the extra info field"""
-        (
-            completed_batch_ids,
-            uncompleted_batch_ids,
-        ) = self.status_handler.get_completed_semantic_source_batch_ids()
-
-        error_report = {
-            "Completed semantic source batch IDs": completed_batch_ids,
-            "Uncompleted semantic source batch IDs": uncompleted_batch_ids,
-            "Current semantic source batch ID": self.data_provider._to_semantic_source_batch_id(
-                self.status_handler.get_last_source_batch_id()
-            ),
-            "Status overview": self.status_handler.get_status_counts(),
-            "Error overview": self.status_handler.get_error_code_counts(),
-        }
-
-        if include_extra_info:
-            error_report[
-                "Status overview per extra info"
-            ] = self.status_handler.get_status_counts_per_extra_info_value()
-
-        return error_report
-
     # TODO implement proper recovery
     def run(self):
         #  fetch the last proc_batch_id via the StatusHandler
@@ -223,12 +135,7 @@ class TaskScheduler(object):
         if proc_batch_id == -1:
             self.logger.info("Could not find a proc batch id, starting anew")
             proc_batch_id = 0
-        # batch_name = self._to_dane_batch_name(proc_batch_id)
-        # TODO check if the latest batch was completed, otherwise rerun it, e.g.:
-        # if self.data_processing_env.is_proc_batch_complete(proc_batch_id):
-        #     proc_batch_id += 1
-        # else:
-        #     self.data_processing_env.reset_dane_batch(proc_batch_id)
+
         while True:
             # first get the batch from the data provider
             self.logger.debug(
@@ -277,7 +184,9 @@ class TaskScheduler(object):
                     if status_rows_monitor:
                         # update the data provider with the processing status for each document in the batch
                         self.logger.debug(f"Received results for batch {proc_batch_id}")
-                        self.status_handler.persist(status_rows_monitor)
+                        self.status_handler.persist(
+                            status_rows_monitor
+                        )  # TODO save status in monitor function
 
                         # now fetch the results from the ProcessingEnvironment
                         processing_results = (
@@ -331,7 +240,7 @@ class TaskScheduler(object):
 # test a full workflow
 if __name__ == "__main__":
     from dane_workflows.util.base_util import load_config
-    from dane_workflows.util.status_util import SQLiteStatusHandler
+    from dane_workflows.status import SQLiteStatusHandler
     from dane_workflows.data_provider import ExampleDataProvider
     from dane_workflows.data_processing import (
         ExampleDataProcessingEnvironment,

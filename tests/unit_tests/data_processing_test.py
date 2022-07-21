@@ -1,7 +1,7 @@
 from mockito import unstub
 import pytest
 from dane_workflows.data_processing import ExampleDataProcessingEnvironment
-from dane_workflows.util.status_util import ExampleStatusHandler, ProcessingStatus
+from dane_workflows.status import ExampleStatusHandler, ProcessingStatus
 from test_util import new_batch
 
 

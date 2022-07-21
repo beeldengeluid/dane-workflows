@@ -2,7 +2,7 @@ from os import sep
 import pytest
 
 from mockito import unstub
-from dane_workflows.util.status_util import (
+from dane_workflows.status import (
     ExampleStatusHandler,
     SQLiteStatusHandler,
     StatusRow,
