@@ -1,7 +1,9 @@
-from dane_workflows.status import ProcessingStatus, StatusRow
+from dane_workflows.status import ProcessingStatus, StatusRow, ErrorCode
 
 
-def new_batch(source_batch_id: int, status: ProcessingStatus):
+def new_batch(
+    source_batch_id: int, status: ProcessingStatus, proc_error_code: ErrorCode = None
+):
     offset = source_batch_id * 100
     return [
         StatusRow(
@@ -16,7 +18,7 @@ def new_batch(source_batch_id: int, status: ProcessingStatus):
             proc_batch_id=None,  # provided by the TaskScheduler, increments
             proc_id=None,  # ID assigned by the DataProcessingEnvironment
             proc_status_msg=None,  # Human readable status message from DataProcessingEnvironment
-            proc_error_code=None,  # an ErrorCode value
+            proc_error_code=proc_error_code,  # an ErrorCode value
         )
         for x in range(offset, offset + 100)
     ]

@@ -93,10 +93,11 @@ def test_validate_config(config, error):
             unstub()
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # TODO test & support empty proc_batch
     ("proc_batch", "proc_batch_id", "proc_env_success", "success"),
     [
         (new_batch(0, ProcessingStatus.NEW), 0, True, True),
+        (new_batch(1, ProcessingStatus.NEW), 1, True, True),
         (new_batch(0, ProcessingStatus.NEW), 0, False, False),
     ],
 )
@@ -126,6 +127,44 @@ def test_register_proc_batch(
         )
 
         assert ts._register_proc_batch(proc_batch_id, proc_batch) == success
-        verify(ExampleDataProcessingEnvironment, times=1).register_batch(ANY, ANY)
+        verify(ExampleDataProcessingEnvironment, times=1).register_batch(
+            proc_batch_id, ANY
+        )
+        verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
+        verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)
+
+
+@pytest.mark.parametrize(
+    ("proc_batch_id", "proc_env_success", "success"),
+    [
+        (0, True, True),
+        (0, False, False),
+    ],
+)
+def test_process_proc_batch(config, proc_batch_id, proc_env_success, success):
+    logger_mock = LoggerMock()
+    with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
+        logger_mock
+    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+        ExampleDataProcessingEnvironment
+    ).process_batch(
+        proc_batch_id
+    ).thenReturn(
+        new_batch(0, ProcessingStatus.PROCESSING) if proc_env_success else None
+    ):
+        spy2(logger_mock.info)
+        spy2(logger_mock.error)
+
+        ts = TaskScheduler(
+            config,
+            ExampleStatusHandler,
+            ExampleDataProvider,
+            ExampleDataProcessingEnvironment,
+            ExampleExporter,
+            True,
+        )
+
+        assert ts._process_proc_batch(proc_batch_id) == success
+        verify(ExampleDataProcessingEnvironment, times=1).process_batch(proc_batch_id)
         verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
         verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)

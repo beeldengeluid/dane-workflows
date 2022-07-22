@@ -60,7 +60,7 @@ class DataProvider(ABC):
 
     # Should return a list of StatusRows for the task scheduler
     def get_next_batch(
-        self, proc_batch_id: str, batch_size: int, called_recursively: bool = False
+        self, proc_batch_id: int, batch_size: int, called_recursively: bool = False
     ) -> Optional[List[StatusRow]]:
         if self.status_handler.get_current_source_batch() is None:
             return None  # means the last batch was delivered
