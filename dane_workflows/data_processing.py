@@ -284,6 +284,7 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
     def register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
+        self.logger.debug("registering batch ExampleDataProcessingEnvironment")
         for row in batch:
             row.proc_id = str(uuid4())  # processing ID in processing env
             row.status = ProcessingStatus.BATCH_REGISTERED

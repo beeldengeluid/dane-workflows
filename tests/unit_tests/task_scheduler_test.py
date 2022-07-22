@@ -1,21 +1,18 @@
 import os
 import pytest
 from mockito import when, verify, spy2, ANY, unstub
-
-import dane_workflows.util.base_util
 from dane_workflows.task_scheduler import TaskScheduler
 import dane_workflows.data_provider
 from dane_workflows.data_provider import ExampleDataProvider
 from dane_workflows.data_processing import (
     ExampleDataProcessingEnvironment,
-    ProcEnvResponse,
 )
 from dane_workflows.exporter import ExampleExporter
 from dane_workflows.status import (
     ExampleStatusHandler,
     ProcessingStatus,
-    ErrorCode,
 )
+from test_util import new_batch
 
 
 class LoggerMock(object):
@@ -30,85 +27,6 @@ class LoggerMock(object):
 
     def error(self, info_string):
         pass
-
-
-# @pytest.mark.parametrize(
-#     ("is_unit_test", "source_batch_recovered", "status_rows"),
-#     [
-#         (True, False, None),
-#         (True, True, None),
-#         (True, False, ["dummy-status-row"]),
-#         (False, False, None),
-#         (False, True, None),
-#         (False, False, ["dummy-status-row"]),
-#     ],
-# )
-# def test___init__(config, is_unit_test, source_batch_recovered, status_rows):
-#     logger_mock = LoggerMock()
-#     with when(TaskScheduler)._validate_config().thenReturn(True), when(
-#         dane_workflows.util.base_util
-#     ).init_logger(config).thenReturn(logger_mock), when(
-#         ExampleStatusHandler
-#     ).recover().thenReturn(
-#         (source_batch_recovered, "dummy-proc-batch-id")
-#     ), when(
-#         ExampleDataProvider
-#     ).fetch_source_batch_data(
-#         0
-#     ).thenReturn(
-#         status_rows
-#     ), when(
-#         ExampleStatusHandler
-#     ).set_current_source_batch(
-#         status_rows
-#     ).thenReturn():
-
-#         if is_unit_test or source_batch_recovered or status_rows is not None:
-#             task_scheduler = TaskScheduler(
-#                 config,
-#                 ExampleStatusHandler,
-#                 ExampleDataProvider,
-#                 ExampleDataProcessingEnvironment,
-#                 ExampleExporter,
-#                 is_unit_test,
-#             )
-#             assert task_scheduler.BATCH_SIZE == config["TASK_SCHEDULER"]["BATCH_SIZE"]
-#             assert (
-#                 task_scheduler.BATCH_PREFIX == config["TASK_SCHEDULER"]["BATCH_PREFIX"]
-#             )
-
-#             assert isinstance(task_scheduler.status_handler, ExampleStatusHandler)
-#             assert isinstance(task_scheduler.data_provider, ExampleDataProvider)
-#             assert isinstance(task_scheduler.exporter, ExampleExporter)
-
-#             verify(TaskScheduler, times=1)._validate_config()
-#             verify(dane_workflows.util.base_util, times=1).init_logger(config)
-#             verify(ExampleStatusHandler, times=0 if is_unit_test else 1).recover()
-#             verify(
-#                 ExampleDataProvider,
-#                 times=1 if (not is_unit_test and not source_batch_recovered) else 0,
-#             ).fetch_source_batch_data(0)
-#             verify(
-#                 ExampleStatusHandler,
-#                 times=1
-#                 if (
-#                     not is_unit_test
-#                     and not source_batch_recovered
-#                     and status_rows is not None
-#                 )
-#                 else 0,
-#             ).set_current_source_batch(status_rows)
-
-#         else:
-#             with pytest.raises(SystemExit):
-#                 task_scheduler = TaskScheduler(
-#                     config,
-#                     ExampleStatusHandler,
-#                     ExampleDataProvider,
-#                     ExampleDataProcessingEnvironment,
-#                     ExampleExporter,
-#                     is_unit_test,
-#                 )
 
 
 @pytest.mark.parametrize(
@@ -173,3 +91,41 @@ def test_validate_config(config, error):
             verify(dane_workflows.util.base_util, times=1).validate_parent_dirs(ANY)
         finally:
             unstub()
+
+
+@pytest.mark.parametrize(
+    ("proc_batch", "proc_batch_id", "proc_env_success", "success"),
+    [
+        (new_batch(0, ProcessingStatus.NEW), 0, True, True),
+        (new_batch(0, ProcessingStatus.NEW), 0, False, False),
+    ],
+)
+def test_register_proc_batch(
+    config, proc_batch, proc_batch_id, proc_env_success, success
+):
+    logger_mock = LoggerMock()
+    with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
+        logger_mock
+    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+        ExampleDataProcessingEnvironment
+    ).register_batch(
+        proc_batch_id, proc_batch
+    ).thenReturn(
+        new_batch(0, ProcessingStatus.BATCH_REGISTERED) if proc_env_success else None
+    ):
+        spy2(logger_mock.info)
+        spy2(logger_mock.error)
+
+        ts = TaskScheduler(
+            config,
+            ExampleStatusHandler,
+            ExampleDataProvider,
+            ExampleDataProcessingEnvironment,
+            ExampleExporter,
+            True,
+        )
+
+        assert ts._register_proc_batch(proc_batch_id, proc_batch) == success
+        verify(ExampleDataProcessingEnvironment, times=1).register_batch(ANY, ANY)
+        verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
+        verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)

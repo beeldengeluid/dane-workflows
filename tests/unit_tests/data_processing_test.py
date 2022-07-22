@@ -6,14 +6,17 @@ from test_util import new_batch
 
 
 @pytest.mark.parametrize(
-    ("proc_batch_id", "status_rows"),
+    ("proc_batch_id", "proc_batch"),
     [(0, new_batch(0, ProcessingStatus.NEW))],
 )
-def test_register_batch(config, proc_batch_id, status_rows):
+def test_register_batch(config, proc_batch_id, proc_batch):
     try:
         status_handler = ExampleStatusHandler(config)
         dpe = ExampleDataProcessingEnvironment(config, status_handler)
-        assert dpe is not None
+        status_rows = dpe.register_batch(proc_batch_id, proc_batch)
+        for row in status_rows:
+            assert row.status == ProcessingStatus.BATCH_REGISTERED
+
     finally:
         unstub()
 

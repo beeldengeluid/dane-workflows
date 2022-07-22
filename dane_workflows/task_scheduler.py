@@ -151,23 +151,29 @@ class TaskScheduler(object):
 
         # continue until all is finished or something breaks
         while True:
-            # first get the batch from the data provider
-            self.logger.debug(
-                f"asking DataProvider for next batch: {proc_batch_id} ({self.BATCH_SIZE})"
-            )
-            status_rows_dp = self.data_provider.get_next_batch(
-                proc_batch_id, self.BATCH_SIZE
-            )
-            if status_rows_dp is None:
-                self.logger.debug("No source_batch remaining, all done, quitting...")
+            # first get the next proc_batch from the DataProvider
+            status_rows = self._get_next_proc_batch(proc_batch_id, self.BATCH_SIZE)
+            if status_rows is None:
+                self.logger.info("No source_batch remaining, all done, quitting...")
                 break
 
-            if self._run_proc_batch(status_rows_dp, proc_batch_id) is False:
+            # now that we have a new proc_batch, pass it on to the ProcessingEnvironment
+            # and eventually the Exporter
+            if self._run_proc_batch(status_rows, proc_batch_id) is False:
                 self.logger.critical("Critical error whilst processing, quitting")
                 break
 
-            # update the proc_batch_id and continue on
+            # update the proc_batch_id and continue on to the next
             proc_batch_id += 1
+
+    # asks the DataProvider for a new proc_batch
+    def _get_next_proc_batch(
+        self, proc_batch_id: int, batch_size: int
+    ) -> Optional[List[StatusRow]]:
+        self.logger.info(
+            f"asking DataProvider for next batch: {proc_batch_id} ({batch_size})"
+        )
+        return self.data_provider.get_next_batch(proc_batch_id, batch_size)
 
     # The proc_batch (list of StatusRow objects) is processed in 5 steps:
     #
@@ -212,6 +218,7 @@ class TaskScheduler(object):
 
         return True
 
+    # calls the ProcessingEnvironment to register the supplied proc_batch
     def _register_proc_batch(
         self, proc_batch_id: int, proc_batch: List[StatusRow]
     ) -> bool:
@@ -223,6 +230,7 @@ class TaskScheduler(object):
         self.logger.info(f"Successfully registered batch: {proc_batch_id}")
         return True
 
+    # calls the ProcessingEnvironment to start processing the proc_batch
     def _process_proc_batch(self, proc_batch_id: int) -> bool:
         self.logger.info(f"Triggering proc_batch to start processing: {proc_batch_id}")
         status_rows = self.data_processing_env.process_batch(proc_batch_id)
@@ -234,6 +242,7 @@ class TaskScheduler(object):
         self.logger.info(f"Successfully triggered the process for: {proc_batch_id}")
         return True
 
+    # calls the ProcessingEnvironment to start monitoring the progress of the proc_batch
     def _monitor_proc_batch(self, proc_batch_id: int) -> bool:
         self.logger.info(
             f"Start monitoring proc_batch until it finishes: {proc_batch_id}"
@@ -249,6 +258,7 @@ class TaskScheduler(object):
         )
         return True
 
+    # calls the ProcessingEnvironment to fetch the results of the processed proc_batch
     def _fetch_proc_batch_output(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
@@ -264,6 +274,7 @@ class TaskScheduler(object):
         )
         return output
 
+    # calls the Exporter to export the processing output of the proc_batch
     def _export_proc_batch_output(
         self, proc_batch_id: int, processing_results: List[ProcessingResult]
     ) -> bool:
