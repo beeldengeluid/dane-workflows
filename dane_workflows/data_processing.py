@@ -52,7 +52,9 @@ class DataProcessingEnvironment(ABC):
             self.logger.error("Malconfigured, quitting...")
             quit()
 
-    def set_register_batch_failed(self, status_rows: List[StatusRow], proc_batch_id: int):
+    def set_register_batch_failed(
+        self, status_rows: List[StatusRow], proc_batch_id: int
+    ):
         return self.status_handler.update_status_rows(
             status_rows,
             status=ProcessingStatus.ERROR,
@@ -64,16 +66,18 @@ class DataProcessingEnvironment(ABC):
         self, proc_batch_id: int, proc_env_resp: ProcEnvResponse
     ):
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
-        return self.status_handler.update_status_rows(
-            status_rows,
-            status=ProcessingStatus.PROCESSING
-            if proc_env_resp.success
-            else ProcessingStatus.ERROR,
-            proc_status_msg=proc_env_resp.status_text,
-            proc_error_code=ErrorCode.BATCH_PROCESSING_NOT_STARTED
-            if proc_env_resp.success is False
-            else None,
-        )
+        if status_rows is not None:
+            return self.status_handler.update_status_rows(
+                status_rows,
+                status=ProcessingStatus.PROCESSING
+                if proc_env_resp.success
+                else ProcessingStatus.ERROR,
+                proc_status_msg=proc_env_resp.status_text,
+                proc_error_code=ErrorCode.BATCH_PROCESSING_NOT_STARTED
+                if proc_env_resp.success is False
+                else None,
+            )
+        return None
 
     @abstractmethod
     def _validate_config(self) -> bool:
@@ -204,6 +208,11 @@ class DANEEnvironment(DataProcessingEnvironment):
         results = self._to_processing_results(
             proc_batch_id, results_of_batch, tasks_of_batch
         )
+        if results is None:
+            self.logger.warning(
+                f"Error obtaining ProcessingResults for proc_batch {proc_batch_id}"
+            )
+            return None
         status_rows = [
             r.status_row for r in results
         ]  # extract the status_rows from the results

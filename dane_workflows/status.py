@@ -296,7 +296,7 @@ class StatusHandler(ABC):
                 row.proc_error_code = proc_error_code
         return status_rows
 
-    def persist(self, status_rows: List[StatusRow]) -> bool:
+    def persist(self, status_rows: Optional[List[StatusRow]]) -> bool:
         if not status_rows or type(status_rows) != list:
             self.logger.warning(
                 "Warning: trying to update status with invalid/empty status data"
