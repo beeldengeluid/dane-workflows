@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import uuid4
+import sys
 from typing import List, Optional
 from dane_workflows.util.base_util import (
     get_logger,
@@ -39,7 +40,7 @@ class DataProcessingEnvironment(ABC):
         # check if the configured TYPE is the same as the DataProcessingEnvironment being instantiated
         if self.__class__.__name__ != config["PROC_ENV"]["TYPE"]:
             print("Malconfigured class instance")
-            quit()
+            sys.exit()
 
         self.config = (
             config["PROC_ENV"]["CONFIG"] if "CONFIG" in config["PROC_ENV"] else {}
@@ -50,9 +51,9 @@ class DataProcessingEnvironment(ABC):
         # enforce config validation
         if not self._validate_config():
             self.logger.error("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
-    def set_register_batch_failed(
+    def _set_register_batch_failed(
         self, status_rows: List[StatusRow], proc_batch_id: int
     ):
         return self.status_handler.update_status_rows(
@@ -62,7 +63,7 @@ class DataProcessingEnvironment(ABC):
             proc_error_code=ErrorCode.BATCH_REGISTER_FAILED,
         )
 
-    def set_by_processing_response(
+    def _set_by_processing_response(
         self, proc_batch_id: int, proc_env_resp: ProcEnvResponse
     ):
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
@@ -79,12 +80,43 @@ class DataProcessingEnvironment(ABC):
             )
         return None
 
+    def register_batch(self, proc_batch_id: int, batch: list) -> Optional[List[StatusRow]]:
+        status_rows = self._register_batch(proc_batch_id, batch)
+        if status_rows is None:  # in case of an error update the status
+            status_rows = self._set_register_batch_failed(batch, proc_batch_id)
+        self.status_handler.persist_or_die(status_rows)
+        return status_rows
+
+    def process_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
+        proc_env_resp = self._process_batch(proc_batch_id)
+        status_rows = self._set_by_processing_response(proc_batch_id, proc_env_resp)
+        self.status_handler.persist_or_die(status_rows)
+        return status_rows
+
+    def monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
+        status_rows = self._monitor_batch(proc_batch_id)
+        self.status_handler.persist_or_die(status_rows)
+        return status_rows
+
+    def fetch_results_of_batch(self, proc_batch_id: int):
+        results = self._fetch_results_of_batch(proc_batch_id)
+        if results is None:
+            self.logger.warning(
+                f"Error obtaining ProcessingResults for proc_batch {proc_batch_id}"
+            )
+            return None
+        status_rows = [
+            r.status_row for r in results
+        ]  # extract the status_rows from the results
+        self.status_handler.persist_or_die(status_rows)
+        return results
+
     @abstractmethod
     def _validate_config(self) -> bool:
         raise NotImplementedError("Implement to validate the config")
 
     @abstractmethod
-    def register_batch(
+    def _register_batch(
         self, proc_batch_id: int, batch: list
     ) -> Optional[List[StatusRow]]:
         raise NotImplementedError(
@@ -92,11 +124,11 @@ class DataProcessingEnvironment(ABC):
         )
 
     @abstractmethod
-    def process_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
+    def _process_batch(self, proc_batch_id: int) -> ProcEnvResponse:
         raise NotImplementedError("Implement to start processing registered batch")
 
     @abstractmethod
-    def monitor_batch(
+    def _monitor_batch(
         self, proc_batch_id: int
     ) -> Optional[List[StatusRow]]:  # containing ids + statusses
         raise NotImplementedError(
@@ -104,7 +136,7 @@ class DataProcessingEnvironment(ABC):
         )
 
     @abstractmethod  # TODO this method should also update al status_rows with row-level statusses
-    def fetch_results_of_batch(
+    def _fetch_results_of_batch(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
         raise NotImplementedError("Implement to fetch batch results")
@@ -166,36 +198,30 @@ class DANEEnvironment(DataProcessingEnvironment):
         return True
 
     # uploads batch as DANE Documents to DANE environment
-    def register_batch(
+    def _register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        status_rows = self.dane_handler.register_batch(proc_batch_id, batch)
-        if status_rows is None:  # in case of an error update the status
-            status_rows = self.set_register_batch_failed(batch, proc_batch_id)
-        return status_rows if self.status_handler.persist(status_rows) else None
+        self.logger.debug(f"Calling DANEHandler to register proc_batch: {proc_batch_id}")
+        return self.dane_handler.register_batch(proc_batch_id, batch)
 
     # tells DANE to start processing Task=self.TASK_ID on registered docs
-    def process_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
-        self.logger.debug("Calling DANEHandler to start processing")
-        success, status_code, status_text = self.dane_handler.process_batch(
+    def _process_batch(self, proc_batch_id: int) -> ProcEnvResponse:
+        self.logger.debug(f"Calling DANEHandler to start processing proc_batch: {proc_batch_id}")
+        return self.dane_handler.process_batch(
             proc_batch_id
         )
-        proc_env_resp = ProcEnvResponse(success, status_code, status_text)
-        status_rows = self.set_by_processing_response(proc_batch_id, proc_env_resp)
-        return status_rows if self.status_handler.persist(status_rows) else None
 
     # When finished returns a list of updated StatusRows
-    def monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
+    def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
         self.logger.debug(f"Monitoring DANE batch #{proc_batch_id}")
         tasks_of_batch = self.dane_handler.monitor_batch(
             proc_batch_id, False  # no verbose output
         )
         # convert the DANE results to StatusRows and persist the status
-        status_rows = self._to_status_rows(proc_batch_id, tasks_of_batch)
-        return status_rows if self.status_handler.persist(status_rows) else None
+        return self._to_status_rows(proc_batch_id, tasks_of_batch)
 
     # TaskScheduler calls this to fetch results of a finished batch
-    def fetch_results_of_batch(
+    def _fetch_results_of_batch(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
         self.logger.debug(
@@ -205,20 +231,9 @@ class DANEEnvironment(DataProcessingEnvironment):
         tasks_of_batch = self.dane_handler.get_tasks_of_batch(proc_batch_id, [])
 
         # convert the DANE Tasks and Results into ProcessingResults
-        results = self._to_processing_results(
+        return self._to_processing_results(
             proc_batch_id, results_of_batch, tasks_of_batch
         )
-        if results is None:
-            self.logger.warning(
-                f"Error obtaining ProcessingResults for proc_batch {proc_batch_id}"
-            )
-            return None
-        status_rows = [
-            r.status_row for r in results
-        ]  # extract the status_rows from the results
-        return (
-            results if self.status_handler.persist(status_rows) else None
-        )  # persist and return
 
     # Converts list of Result objects into ProcessingResults
     def _to_processing_results(
@@ -281,24 +296,23 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
         return True
 
     # simulates receiving a successful registration of the batch in an external processing system
-    def register_batch(
+    def _register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        self.logger.debug("registering batch ExampleDataProcessingEnvironment")
+        self.logger.debug(f"Registering (example) proc_batch: {proc_batch_id}")
         for row in batch:
             row.proc_id = str(uuid4())  # processing ID in processing env
             row.status = ProcessingStatus.BATCH_REGISTERED
         self.batch = batch
-        return batch if self.status_handler.persist(batch) else None
+        return batch
 
     # normally calls an external system to start processing, now just returns it's all good
-    def process_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
-        proc_env_resp = ProcEnvResponse(True, 200, "All fine n dandy")
-        status_rows = self.set_by_processing_response(proc_batch_id, proc_env_resp)
-        return status_rows if self.status_handler.persist(status_rows) else None
+    def _process_batch(self, proc_batch_id: int) -> ProcEnvResponse:
+        self.logger.debug(f"Processing (example) proc_batch: {proc_batch_id}")
+        return ProcEnvResponse(True, 200, "All fine n dandy")
 
     # pretends that within 3 seconds the whole batch was successfully processed
-    def monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
+    def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
         self.logger.debug(f"Monitoring batch: {proc_batch_id}")
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
         if status_rows is not None:
@@ -307,16 +321,15 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
             sleep(3)
         else:
             self.logger.warning(f"Processing Batch {proc_batch_id} failed")
-        return status_rows if self.status_handler.persist(status_rows) else None
+        return status_rows
 
-    def fetch_results_of_batch(
+    def _fetch_results_of_batch(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
         for row in self.batch:
             row.status = ProcessingStatus.RESULTS_FETCHED
 
-        results = [ProcessingResult(row, {}, {}) for row in self.batch]
-        return results if self.status_handler.persist(self.batch) else None
+        return [ProcessingResult(row, {}, {}) for row in self.batch]
 
 
 # Test your DataProcessingEnvironment in isolation

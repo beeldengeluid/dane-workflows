@@ -1,3 +1,4 @@
+import sys
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import uuid4
@@ -24,7 +25,7 @@ class DataProvider(ABC):
         # check if the configured TYPE is the same as the DataProvider being instantiated
         if self.__class__.__name__ != config["DATA_PROVIDER"]["TYPE"]:
             print("Malconfigured class instance")
-            quit()
+            sys.exit()
 
         self.config = config["DATA_PROVIDER"]["CONFIG"]
         self.logger = get_logger(config)  # logging was already initialised by owner
@@ -34,7 +35,7 @@ class DataProvider(ABC):
         # enforce config validation
         if not self._validate_config():
             self.logger.error("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
     """
     ------------------------------ ABSTRACT METHODS --------------------

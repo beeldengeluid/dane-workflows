@@ -1,3 +1,4 @@
+import sys
 from typing import List, Type, Tuple, Optional
 import dane_workflows.util.base_util as base_util
 from dane_workflows.data_provider import DataProvider, ProcessingStatus
@@ -33,7 +34,7 @@ class TaskScheduler(object):
 
         if not self._validate_config():
             print("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
         self.BATCH_PREFIX = config["TASK_SCHEDULER"][
@@ -107,7 +108,7 @@ class TaskScheduler(object):
             self.logger.info(
                 "Could not recover source_batch, so either the work was done or something is wrong with the DataProvider, quitting"
             )
-            quit()
+            sys.exit()
 
         last_proc_batch_id = 0
         skip_steps = 0
@@ -123,6 +124,8 @@ class TaskScheduler(object):
                     continue
                 if row.status.value > highest_proc_stat:
                     highest_proc_stat = row.status.value
+
+            # ProcessingStatus values are ordered, so we can simply subtract to find the steps to skip
             skip_steps = highest_proc_stat - 2
 
         return last_proc_batch, last_proc_batch_id, skip_steps

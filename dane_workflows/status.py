@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import sys
 from dataclasses import dataclass
 from enum import IntEnum, unique
 from typing import List, Optional, Tuple
@@ -110,7 +111,7 @@ class StatusHandler(ABC):
         # check if the configured TYPE is the same as the StatusHandler being instantiated
         if self.__class__.__name__ != config["STATUS_HANDLER"]["TYPE"]:
             print("Malconfigured class instance")
-            quit()
+            sys.exit()
 
         # only used so the data provider knows which source_batch it was at
         self.cur_source_batch: List[StatusRow] = None  # call recover to fill it
@@ -124,7 +125,7 @@ class StatusHandler(ABC):
         # enforce config validation
         if not self._validate_config():
             self.logger.error("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
     """ ------------------------------------ ABSTRACT FUNCTIONS -------------------------------- """
 
@@ -296,6 +297,12 @@ class StatusHandler(ABC):
                 row.proc_error_code = proc_error_code
         return status_rows
 
+    def persist_or_die(self, status_rows:Optional[List[StatusRow]]):
+        self.logger.debug(f"Persist or die; status_rows are ok: {status_rows is None}")
+        if self.persist(status_rows) is False:
+            self.logger.critical("Could not persists status, so quitting to avoid corrupt state")
+            sys.exit()
+
     def persist(self, status_rows: Optional[List[StatusRow]]) -> bool:
         if not status_rows or type(status_rows) != list:
             self.logger.warning(
@@ -414,7 +421,7 @@ class SQLiteStatusHandler(StatusHandler):
         self.DB_FILE: str = self.config["DB_FILE"]
         if self._init_database() is False:
             self.logger.debug(f"Could not initialize the DB: {self.DB_FILE}")
-            quit()
+            sys.exit()
 
     def _init_database(self):
         conn = self._create_connection(self.DB_FILE)

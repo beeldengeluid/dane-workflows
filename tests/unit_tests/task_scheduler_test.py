@@ -12,21 +12,7 @@ from dane_workflows.status import (
     ExampleStatusHandler,
     ProcessingStatus,
 )
-from test_util import new_batch
-
-
-class LoggerMock(object):
-    def __enter__(self):
-        pass
-
-    def __exit__(self, one, two, three):
-        pass
-
-    def info(self, info_string):
-        pass
-
-    def error(self, info_string):
-        pass
+from test_util import new_batch, LoggerMock
 
 
 @pytest.mark.parametrize(
@@ -104,7 +90,7 @@ def test_validate_config(config, error):
 def test_register_proc_batch(
     config, proc_batch, proc_batch_id, proc_env_success, success
 ):
-    logger_mock = LoggerMock()
+    logger_mock = LoggerMock()  # mock the logger to avoid log file output
     with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
         logger_mock
     ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
