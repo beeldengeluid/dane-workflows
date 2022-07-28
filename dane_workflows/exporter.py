@@ -1,9 +1,10 @@
+import sys
 from abc import ABC, abstractmethod
 from typing import List
 
 from dane_workflows.data_processing import ProcessingResult
 from dane_workflows.util.base_util import get_logger
-from dane_workflows.util.status_util import StatusHandler, ProcessingStatus
+from dane_workflows.status import StatusHandler, ProcessingStatus
 
 """
 This class is owned by a TaskScheduler to export results obtained from a processing environment (such as DANE)
@@ -16,7 +17,7 @@ class Exporter(ABC):
         # check if the configured TYPE is the same as the Exporter being instantiated
         if self.__class__.__name__ != config["EXPORTER"]["TYPE"]:
             print(f"Malconfigured class instance: {config['EXPORTER']['TYPE']}")
-            quit()
+            sys.exit()
 
         self.config = (
             config["EXPORTER"]["CONFIG"] if "CONFIG" in config["EXPORTER"] else {}
@@ -27,7 +28,7 @@ class Exporter(ABC):
         # enforce config validation
         if not self._validate_config():
             self.logger.error("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
         self.status_handler = status_handler
 

@@ -1,216 +1,156 @@
+import os
 import pytest
-from mockito import when, verify
-
+from mockito import when, verify, spy2, ANY, unstub
 from dane_workflows.task_scheduler import TaskScheduler
-from dane_workflows.util.status_util import ExampleStatusHandler
+import dane_workflows.data_provider
 from dane_workflows.data_provider import ExampleDataProvider
 from dane_workflows.data_processing import (
     ExampleDataProcessingEnvironment,
 )
 from dane_workflows.exporter import ExampleExporter
-from dane_workflows.util.status_util import ProcessingStatus, ErrorCode
+from dane_workflows.status import (
+    ExampleStatusHandler,
+    ProcessingStatus,
+)
+from test_util import new_batch, LoggerMock
 
 
-def test_check_status(config):
-    task_scheduler = TaskScheduler(
-        config,
-        ExampleStatusHandler,
-        ExampleDataProvider,
-        ExampleDataProcessingEnvironment,
-        ExampleExporter,
-    )
-    dummy_last_proc_batch_id = 1
-    dummy_last_source_batch_id = 2
+@pytest.mark.parametrize(
+    "error",
+    [
+        None,
+        "no_logging_config",
+        "no_log_name",
+        "no_log_dir",
+        "no_log_level",
+        "no_ts_config",
+        "no_ts_batch_size",
+        "no_ts_batch_prefix",
+        "bad_logging_dir",
+    ],
+)
+def test_validate_config(config, error):
+    if error == "no_logging_config":
+        del config["LOGGING"]
+    elif error == "no_log_name":
+        del config["LOGGING"]["NAME"]
+    elif error == "no_log_dir":
+        del config["LOGGING"]["DIR"]
+    elif error == "no_log_level":
+        del config["LOGGING"]["LEVEL"]
+    elif error == "no_ts_config":
+        del config["TASK_SCHEDULER"]
+    elif error == "no_ts_batch_size":
+        del config["TASK_SCHEDULER"]["BATCH_SIZE"]
+    elif error == "no_ts_batch_prefix":
+        del config["TASK_SCHEDULER"]["BATCH_PREFIX"]
+    elif error == "bad_logging_dir":
+        config["LOGGING"]["DIR"] = os.sep.join([os.getcwd(), "nonsense", "logging"])
 
-    dummy_error_code_counts_for_proc_batch = {
-        ErrorCode.IMPOSSIBLE: 2,
-        ErrorCode.BATCH_REGISTER_FAILED: 1,
-    }
+    if error:
+        with pytest.raises(SystemExit):
+            TaskScheduler(
+                config,
+                ExampleStatusHandler,
+                ExampleDataProvider,
+                ExampleDataProcessingEnvironment,
+                ExampleExporter,
+                True,
+            )
+    else:
+        try:
+            spy2(dane_workflows.util.base_util.check_log_level)
+            spy2(dane_workflows.util.base_util.check_setting)
+            spy2(dane_workflows.util.base_util.validate_parent_dirs)
 
-    dummy_status_counts_for_proc_batch = {
-        ProcessingStatus.ERROR: 3,
-        ProcessingStatus.NEW: 1,
-        ProcessingStatus.FINISHED: 2,
-    }
-    dummy_error_code_counts_for_source_batch = {
-        ErrorCode.IMPOSSIBLE: 1,
-        ErrorCode.EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE: 2,
-        ErrorCode.EXPORT_FAILED_SOURCE_DOC_NOT_FOUND: 1,
-    }
+            TaskScheduler(
+                config,
+                ExampleStatusHandler,
+                ExampleDataProvider,
+                ExampleDataProcessingEnvironment,
+                ExampleExporter,
+                True,
+            )
 
-    dummy_status_counts_for_source_batch = {
-        ProcessingStatus.ERROR: 4,
-        ProcessingStatus.NEW: 5,
-        ProcessingStatus.BATCH_ASSIGNED: 2,
-    }
-    with when(ExampleStatusHandler).get_last_proc_batch_id().thenReturn(
-        dummy_last_proc_batch_id
-    ), when(ExampleStatusHandler).get_last_source_batch_id().thenReturn(
-        dummy_last_source_batch_id
-    ), when(
-        ExampleStatusHandler
-    ).get_status_counts_for_proc_batch_id(
-        dummy_last_proc_batch_id
+            verify(dane_workflows.util.base_util, times=1).check_log_level(ANY)
+            verify(dane_workflows.util.base_util, times=4).check_setting(ANY, ANY)
+            verify(dane_workflows.util.base_util, times=1).validate_parent_dirs(ANY)
+        finally:
+            unstub()
+
+
+@pytest.mark.parametrize(  # TODO test & support empty proc_batch
+    ("proc_batch", "proc_batch_id", "proc_env_success", "success"),
+    [
+        (new_batch(0, ProcessingStatus.NEW), 0, True, True),
+        (new_batch(1, ProcessingStatus.NEW), 1, True, True),
+        (new_batch(0, ProcessingStatus.NEW), 0, False, False),
+    ],
+)
+def test_register_proc_batch(
+    config, proc_batch, proc_batch_id, proc_env_success, success
+):
+    logger_mock = LoggerMock()  # mock the logger to avoid log file output
+    with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
+        logger_mock
+    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+        ExampleDataProcessingEnvironment
+    ).register_batch(
+        proc_batch_id, proc_batch
     ).thenReturn(
-        dummy_status_counts_for_proc_batch
-    ), when(
-        ExampleStatusHandler
-    ).get_error_code_counts_for_proc_batch_id(
-        dummy_last_proc_batch_id
-    ).thenReturn(
-        dummy_error_code_counts_for_proc_batch
-    ), when(
-        ExampleStatusHandler
-    ).get_status_counts_for_source_batch_id(
-        dummy_last_source_batch_id
-    ).thenReturn(
-        dummy_status_counts_for_source_batch
-    ), when(
-        ExampleStatusHandler
-    ).get_error_code_counts_for_source_batch_id(
-        dummy_last_source_batch_id
-    ).thenReturn(
-        dummy_error_code_counts_for_source_batch
+        new_batch(0, ProcessingStatus.BATCH_REGISTERED) if proc_env_success else None
     ):
+        spy2(logger_mock.info)
+        spy2(logger_mock.error)
 
-        status_info = task_scheduler.check_status()
-
-        assert status_info["Date started"] == task_scheduler.date_started.strftime(
-            "%Y-%m-%d"
-        )
-        assert status_info["Last batch processed"] == dummy_last_proc_batch_id
-        assert status_info["Last source batch retrieved"] == dummy_last_source_batch_id
-
-        for key in dummy_status_counts_for_proc_batch:
-            assert f"{key}: {dummy_status_counts_for_proc_batch[key]}" in str(
-                status_info
-            )
-        for key in dummy_error_code_counts_for_proc_batch:
-            assert f"{key}: {dummy_error_code_counts_for_proc_batch[key]}" in str(
-                status_info
-            )
-        for key in dummy_status_counts_for_source_batch:
-            assert f"{key}: {dummy_status_counts_for_source_batch[key]}" in str(
-                status_info
-            )
-        for key in dummy_error_code_counts_for_source_batch:
-            assert f"{key}: {dummy_error_code_counts_for_source_batch[key]}" in str(
-                status_info
-            )
-
-        verify(ExampleStatusHandler, times=1).get_last_proc_batch_id()
-        verify(ExampleStatusHandler, times=1).get_last_source_batch_id()
-        verify(ExampleStatusHandler, times=1).get_status_counts_for_proc_batch_id(
-            dummy_last_proc_batch_id
-        )
-        verify(ExampleStatusHandler, times=1).get_error_code_counts_for_proc_batch_id(
-            dummy_last_proc_batch_id
-        )
-        verify(ExampleStatusHandler, times=1).get_status_counts_for_source_batch_id(
-            dummy_last_source_batch_id
-        )
-        verify(ExampleStatusHandler, times=1).get_error_code_counts_for_source_batch_id(
-            dummy_last_source_batch_id
+        ts = TaskScheduler(
+            config,
+            ExampleStatusHandler,
+            ExampleDataProvider,
+            ExampleDataProcessingEnvironment,
+            ExampleExporter,
+            True,
         )
 
+        assert ts._register_proc_batch(proc_batch_id, proc_batch) == success
+        verify(ExampleDataProcessingEnvironment, times=1).register_batch(
+            proc_batch_id, ANY
+        )
+        verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
+        verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)
 
-@pytest.mark.parametrize("include_extra_info", [False, True])
-def test_get_detailed_status_report(config, include_extra_info):
-    task_scheduler = TaskScheduler(
-        config,
-        ExampleStatusHandler,
-        ExampleDataProvider,
-        ExampleDataProcessingEnvironment,
-        ExampleExporter,
-    )
 
-    dummy_incomplete = ["dummy-incomplete-1", "dummy-incomplete-2"]
-    dummy_complete = [
-        "dummy-complete-1",
-        "dummy-complete-2",
-        "dummy-complete-3",
-        "dummy-complete-4",
-    ]
-    dummy_source_batch_id = "dummy-source-batch-id"
-    dummy_semantic_source_batch_id = "dummy-semantic-source-batch-id"
-    dummy_status_counts = {
-        ProcessingStatus.NEW: 1,
-        ProcessingStatus.ERROR: 3,
-        ProcessingStatus.FINISHED: 5,
-    }
-    dummy_error_code_counts = {
-        ErrorCode.IMPOSSIBLE: 1,
-        ErrorCode.EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE: 1,
-        ErrorCode.BATCH_ASSIGN_FAILED: 1,
-    }
-    dummy_status_counts_per_extra_info = {
-        "dummy-genre-1": {ProcessingStatus.NEW: 1},
-        "dummy-genre-2": {ProcessingStatus.ERROR: 2, ProcessingStatus.FINISHED: 3},
-        "dummy-genre-3": {ProcessingStatus.ERROR: 1, ProcessingStatus.FINISHED: 2},
-    }
-
-    with when(
-        ExampleStatusHandler
-    ).get_completed_semantic_source_batch_ids().thenReturn(
-        (dummy_complete, dummy_incomplete)
-    ), when(
-        ExampleStatusHandler
-    ).get_last_source_batch_id().thenReturn(
-        dummy_source_batch_id
-    ), when(
-        ExampleDataProvider
-    )._to_semantic_source_batch_id(
-        dummy_source_batch_id
+@pytest.mark.parametrize(
+    ("proc_batch_id", "proc_env_success", "success"),
+    [
+        (0, True, True),
+        (0, False, False),
+    ],
+)
+def test_process_proc_batch(config, proc_batch_id, proc_env_success, success):
+    logger_mock = LoggerMock()
+    with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
+        logger_mock
+    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+        ExampleDataProcessingEnvironment
+    ).process_batch(
+        proc_batch_id
     ).thenReturn(
-        dummy_semantic_source_batch_id
-    ), when(
-        ExampleStatusHandler
-    ).get_status_counts().thenReturn(
-        dummy_status_counts
-    ), when(
-        ExampleStatusHandler
-    ).get_error_code_counts().thenReturn(
-        dummy_error_code_counts
-    ), when(
-        ExampleStatusHandler
-    ).get_status_counts_per_extra_info_value().thenReturn(
-        dummy_status_counts_per_extra_info
+        new_batch(0, ProcessingStatus.PROCESSING) if proc_env_success else None
     ):
+        spy2(logger_mock.info)
+        spy2(logger_mock.error)
 
-        status_report = task_scheduler.get_detailed_status_report(include_extra_info)
-
-        assert "Completed semantic source batch IDs" in status_report
-        assert status_report["Completed semantic source batch IDs"] == dummy_complete
-        assert "Uncompleted semantic source batch IDs" in status_report
-        assert (
-            status_report["Uncompleted semantic source batch IDs"] == dummy_incomplete
+        ts = TaskScheduler(
+            config,
+            ExampleStatusHandler,
+            ExampleDataProvider,
+            ExampleDataProcessingEnvironment,
+            ExampleExporter,
+            True,
         )
-        assert "Current semantic source batch ID" in status_report
-        assert (
-            status_report["Current semantic source batch ID"]
-            == dummy_semantic_source_batch_id
-        )
-        assert "Status overview" in status_report
-        assert status_report["Status overview"] == dummy_status_counts
-        assert "Error overview" in status_report
-        assert status_report["Error overview"] == dummy_error_code_counts
 
-        if include_extra_info:
-            assert "Status overview per extra info" in status_report
-            assert (
-                status_report["Status overview per extra info"]
-                == dummy_status_counts_per_extra_info
-            )
-        else:
-            assert "Status overview per extra info" not in status_report
-
-        verify(ExampleStatusHandler, times=1).get_completed_semantic_source_batch_ids()
-        verify(ExampleStatusHandler, times=1).get_last_source_batch_id()
-        verify(ExampleDataProvider, times=1)._to_semantic_source_batch_id(
-            dummy_source_batch_id
-        )
-        verify(ExampleStatusHandler, times=1).get_status_counts()
-        verify(ExampleStatusHandler, times=1).get_error_code_counts()
-        verify(
-            ExampleStatusHandler, times=1 if include_extra_info else 0
-        ).get_status_counts_per_extra_info_value()
+        assert ts._process_proc_batch(proc_batch_id) == success
+        verify(ExampleDataProcessingEnvironment, times=1).process_batch(proc_batch_id)
+        verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
+        verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)

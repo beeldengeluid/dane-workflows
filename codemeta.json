@@ -1,0 +1,46 @@
+{
+    "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+    "@type": "SoftwareSourceCode",
+    "codeRepository": "https://github.com/beeldengeluid/dane-workflows",
+    "dateCreated": "2022-07-18",
+    "issueTracker": "https://github.com/beeldengeluid/dane-workflows/issues",
+    "name": "dane-workflows",
+    "version": "0.9.0",
+    "description": "Python library for setting up simple data processing workflows (using DANE)",
+    "applicationCategory": "Multimedia processing",
+    "developmentStatus": "wip",
+    "funder": {
+        "@type": "Organization",
+        "name": "CLARIAH",
+        "url": "https://www.clariah.nl"
+    },
+    "programmingLanguage": [
+        "Python 3"
+    ],
+    "softwareRequirements": [
+        "Python 3.10"
+    ],
+    "author": [
+        {
+            "@type": "Person",
+            "@id": "https://github.com/jblom",
+            "givenName": "Jaap",
+            "familyName": "Blom",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "The Netherlands Institute for Sound and Vision"
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "https://github.com/mwigham",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "The Netherlands Institute for Sound and Vision"
+            }
+        }
+    ],
+    "contributor": [
+        
+    ]
+}

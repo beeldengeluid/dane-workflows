@@ -1,3 +1,4 @@
+import sys
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import uuid4
@@ -6,7 +7,7 @@ from dane_workflows.util.base_util import (
     check_setting,
     load_config,
 )
-from dane_workflows.util.status_util import StatusHandler, StatusRow, ProcessingStatus
+from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus
 
 """
 This class is owned by a TaskScheduler, which expects this class to provide the next n DAEN Documents
@@ -24,7 +25,7 @@ class DataProvider(ABC):
         # check if the configured TYPE is the same as the DataProvider being instantiated
         if self.__class__.__name__ != config["DATA_PROVIDER"]["TYPE"]:
             print("Malconfigured class instance")
-            quit()
+            sys.exit()
 
         self.config = config["DATA_PROVIDER"]["CONFIG"]
         self.logger = get_logger(config)  # logging was already initialised by owner
@@ -34,7 +35,7 @@ class DataProvider(ABC):
         # enforce config validation
         if not self._validate_config():
             self.logger.error("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
     """
     ------------------------------ ABSTRACT METHODS --------------------
@@ -60,7 +61,7 @@ class DataProvider(ABC):
 
     # Should return a list of StatusRows for the task scheduler
     def get_next_batch(
-        self, proc_batch_id: str, batch_size: int, called_recursively: bool = False
+        self, proc_batch_id: int, batch_size: int, called_recursively: bool = False
     ) -> Optional[List[StatusRow]]:
         if self.status_handler.get_current_source_batch() is None:
             return None  # means the last batch was delivered
@@ -177,7 +178,7 @@ class ExampleDataProvider(DataProvider):
 
 # Test your DataProvider in isolation
 if __name__ == "__main__":
-    from dane_workflows.util.status_util import SQLiteStatusHandler
+    from dane_workflows.status import SQLiteStatusHandler
 
     config = load_config("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)

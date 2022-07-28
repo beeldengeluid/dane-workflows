@@ -1,19 +1,25 @@
-# from abc import ABC, abstractmethod
-import datetime
-from typing import List, Type
+import sys
+from typing import List, Type, Tuple, Optional
 import dane_workflows.util.base_util as base_util
 from dane_workflows.data_provider import DataProvider, ProcessingStatus
-from dane_workflows.data_processing import DataProcessingEnvironment
+from dane_workflows.data_processing import DataProcessingEnvironment, ProcessingResult
 from dane_workflows.exporter import Exporter
-from dane_workflows.util.status_util import StatusHandler, StatusRow, ErrorCode
+from dane_workflows.status import StatusHandler, StatusRow
 
 
 """
-Cron jobs should call an instance of this class and call its run() method
+The TaskScheduler is the main process that interprets & runs a workflow comprised of:
+- implementation of a DataProvider
+- implementation of a ProcessingEnvironment
+- implementation of an Exporter
+- implementation of a StatusHandler
+
+The constructor takes a config and a class type for each of the aforementioned components
+to be able to instantiate the correct implementions. The config should make sure to provide
+these implementations with the specific parameters they require.
 """
 
 
-# TODO add exporter, so results can be written back to the source
 class TaskScheduler(object):
     def __init__(
         self,
@@ -28,7 +34,7 @@ class TaskScheduler(object):
 
         if not self._validate_config():
             print("Malconfigured, quitting...")
-            quit()
+            sys.exit()
 
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
         self.BATCH_PREFIX = config["TASK_SCHEDULER"][
@@ -36,7 +42,6 @@ class TaskScheduler(object):
         ]  # to keep track of the batches
 
         self.logger = base_util.init_logger(config)  # first init the logger
-        self.date_started = datetime.datetime.now()
 
         # first initialize the status handler and pass it to the data provider and processing env
         self.status_handler: StatusHandler = status_handler(config)
@@ -47,23 +52,6 @@ class TaskScheduler(object):
             config, self.status_handler, unit_test
         )  # instantiate the DataProcessingEnvironment
         self.exporter = exporter(config, self.status_handler, unit_test)
-        # always try to recover (without status files, the first source batch will be created)
-        if unit_test is False:
-            # TODO this should fetch the last source_batch_id and the last proc_batch_id, then:
-            # -
-
-            source_batch_recovered, last_proc_batch = self.status_handler.recover()
-
-            self.logger.info(f"Recovered last status: {source_batch_recovered}")
-            if source_batch_recovered is False:
-                self.logger.info("No status data could be recovered, starting afresh")
-                status_rows = self.data_provider.fetch_source_batch_data(0)
-                if status_rows is not None:
-                    self.logger.info("Starting from the first source batch")
-                    self.status_handler.set_current_source_batch(status_rows)
-                else:
-                    self.logger.error("DataProvider could not fetch any initial data")
-                    quit()
 
     def _validate_config(self):
         parent_dirs_to_check = []
@@ -106,232 +94,206 @@ class TaskScheduler(object):
 
         return True
 
-    """ -------------------------- RUN() ------------------------------------------------------- """
-
-    def _to_dane_batch_name(self, proc_batch_id: int) -> str:
-        return f"{self.BATCH_PREFIX}__{proc_batch_id}"
-
-    def _update_status(
-        self,
-        status_rows: List[StatusRow],
-        status: ProcessingStatus,
-        proc_batch_id: int = -1,
-        proc_status_msg: str = None,
-        proc_error_code: ErrorCode = None,
-    ):
-        self.status_handler.persist(
-            self.status_handler.update_status_rows(
-                status_rows,
-                status=status,
-                proc_batch_id=proc_batch_id,
-                proc_status_msg=proc_status_msg,
-                proc_error_code=proc_error_code,
-            )
+    # Calls the StatusHandler to load the status_handler.cur_source_batch into memory.
+    #
+    # Subsequently the StatusHandler is called to recover the last proc_batch.
+    #
+    # Based on the last ProcessingStatus in this proc_batch the number of steps to skip
+    # within _run_proc_batch() is determined to resume processing from
+    def _recover(self) -> Tuple[Optional[List[StatusRow]], int, int]:
+        source_batch_recovered, last_proc_batch = self.status_handler.recover(
+            self.data_provider
         )
+        if source_batch_recovered is False:
+            self.logger.info(
+                "Could not recover source_batch, so either the work was done or something is wrong with the DataProvider, quitting"
+            )
+            sys.exit()
 
-    def check_status(self):
-        """Collects status information about this TaskScheduler and returns it in a dict
-        Returns: dict with status information
-        "Date started"  - the date the TaskScheduler was initialised
-        "Last batch processed" - processing batch ID of the last batch processed
-        "Last source batch retrieved" - source batch ID of the last batch retrieved from the data provider
-        "Status information for last batch processed" - dict of statuses and their counts for the last batch processed
-        "Error information for last batch processed"- dict of error codes and their counts for the last batch processed
-        "Status information for last source batch retrieved" - dict of statuses and their counts for the last batch
-        retrieved from the data provider
-        "Error information for last source batch retrieved"- dict of error codes and their counts for the last batch
-        retrieved from the data provider
-        """
+        last_proc_batch_id = 0
+        skip_steps = 0
 
-        last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
-        last_source_batch_id = self.status_handler.get_last_source_batch_id()
+        if last_proc_batch:
+            last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
+            self.logger.info("Synchronizing last proc_batch with ProcessingEnvironment")
 
-        return {
-            # get date started
-            "Date started": self.date_started.strftime("%Y-%m-%d"),
-            # get last batch processed
-            "Last batch processed": last_proc_batch_id,
-            # get last batch retrieved
-            "Last source batch retrieved": last_source_batch_id,
-            # get status and error code information for last batch processed
-            "Status information for last batch processed": [
-                f"{ProcessingStatus(status)}: {count}"
-                for status, count in self.status_handler.get_status_counts_for_proc_batch_id(
-                    last_proc_batch_id
-                ).items()
-            ],
-            "Error information for last batch processed": [
-                f"{ErrorCode(error_code)}: {count}"
-                for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
-                    last_proc_batch_id
-                ).items()
-            ],
-            # get status and error code information for last batch retrieved
-            "Status information for last source batch retrieved": [
-                f"{ProcessingStatus(status)}: {count}"
-                for status, count in self.status_handler.get_status_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-            ],
-            "Error information for last source batch retrieved": [
-                f"{ErrorCode(error_code)}: {count}"
-                for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-            ],
-        }
+            # determine where to resume processing by looking at the highest step in the chain
+            highest_proc_stat = 0
+            for row in last_proc_batch:
+                if row.status == ProcessingStatus.ERROR:  # skip errors
+                    continue
+                if row.status.value > highest_proc_stat:
+                    highest_proc_stat = row.status.value
 
-    def get_detailed_status_report(self, include_extra_info):
-        """Gets a detailed status report on all batches completed by this TaskScheduler
-        Args:
-            - include_extra_info - if this is true, then an overview of statuses per value of the extra_info
-            field in the StatusRow is returned
-        Returns a dict of information:
-        - "Completed semantic source batch IDs" - a list of all completed semantic source batch IDs
-        - "Uncompleted semantic source batch IDs" - a list of all uncompleted semantic source batch IDs
-        - "Current semantic source batch ID" - the semantic source batch currently being processed
-        - "Status overview" - a dict with the statuses and their counts over all batches
-        - "Error overview" - a dict with the error codes and their counts over all batches
-        - "Status overview per extra info" - optional, if include_extra_info is true. A dict with status overview
-        per value of the extra info field"""
-        (
-            completed_batch_ids,
-            uncompleted_batch_ids,
-        ) = self.status_handler.get_completed_semantic_source_batch_ids()
+            # ProcessingStatus values are ordered, so we can simply subtract to find the steps to skip
+            skip_steps = highest_proc_stat - 2
 
-        error_report = {
-            "Completed semantic source batch IDs": completed_batch_ids,
-            "Uncompleted semantic source batch IDs": uncompleted_batch_ids,
-            "Current semantic source batch ID": self.data_provider._to_semantic_source_batch_id(
-                self.status_handler.get_last_source_batch_id()
-            ),
-            "Status overview": self.status_handler.get_status_counts(),
-            "Error overview": self.status_handler.get_error_code_counts(),
-        }
+        return last_proc_batch, last_proc_batch_id, skip_steps
 
-        if include_extra_info:
-            error_report[
-                "Status overview per extra info"
-            ] = self.status_handler.get_status_counts_per_extra_info_value()
-
-        return error_report
-
-    # TODO implement proper recovery
+    # Before starting the endless loop of processing everything the DataProvider has to offer,
+    # _recover() is called to make sure:
+    #
+    # 1. The StatusHandler has loaded cur_source_batch in memory
+    # 2. The last proc_batch is retrieved (representing the batch last fed to the ProcessingEnvironment)
+    # 3. The last successful step within this batch is retrieved we know how many steps to
+    #    skip within _run_proc_batch()
     def run(self):
-        #  fetch the last proc_batch_id via the StatusHandler
-        proc_batch_id = self.status_handler.get_last_proc_batch_id()
-        if proc_batch_id == -1:
-            self.logger.info("Could not find a proc batch id, starting anew")
-            proc_batch_id = 0
-        # batch_name = self._to_dane_batch_name(proc_batch_id)
-        # TODO check if the latest batch was completed, otherwise rerun it, e.g.:
-        # if self.data_processing_env.is_proc_batch_complete(proc_batch_id):
-        #     proc_batch_id += 1
-        # else:
-        #     self.data_processing_env.reset_dane_batch(proc_batch_id)
-        while True:
-            # first get the batch from the data provider
-            self.logger.debug(
-                f"asking DP for next batch: {proc_batch_id} ({self.BATCH_SIZE})"
-            )
-            status_rows_dp = self.data_provider.get_next_batch(
-                proc_batch_id, self.BATCH_SIZE
-            )
-            if status_rows_dp is None:
-                self.logger.debug("No source batch remaining, quitting...")
-                break
 
-            # then register the batch in the data processing environment
-            self.logger.debug(f"register_batch: {proc_batch_id} ({self.BATCH_SIZE})")
-            status_rows_dpe = self.data_processing_env.register_batch(
-                proc_batch_id, status_rows_dp
-            )
-            if status_rows_dpe is not None:
-                # now contains the proc_id so now we have a reference ID in the ProcessingEnvironment
-                self.status_handler.persist(status_rows_dpe)
-                # self.logger.debug("BREAKING OFF THE LOOP TO TEST")
-                # break
+        # always try to recover (without StatusHandler data, the first source_batch will be created)
+        last_proc_batch, last_proc_batch_id, skip_steps = self._recover()
 
-                proc_resp = self.data_processing_env.process_batch(proc_batch_id)
-                # start the processing
-                if proc_resp.success:
-                    self._update_status(
-                        status_rows_dpe,
-                        status=ProcessingStatus.PROCESSING,
-                        proc_batch_id=proc_batch_id,
-                        proc_status_msg=proc_resp.status_text,
-                    )
-                    self.logger.debug(
-                        f"process_batch: {proc_batch_id} ({self.BATCH_SIZE})"
-                    )
-
-                    # monitor the processing, until it returns the results
-                    self.logger.debug(
-                        f"data_processing_env: {proc_batch_id} ({self.BATCH_SIZE})"
-                    )
-
-                    # TODO the monitor function still needs to return a list of updated status_rows
-                    status_rows_monitor = self.data_processing_env.monitor_batch(
-                        proc_batch_id
-                    )
-                    if status_rows_monitor:
-                        # update the data provider with the processing status for each document in the batch
-                        self.logger.debug(f"Received results for batch {proc_batch_id}")
-                        self.status_handler.persist(status_rows_monitor)
-
-                        # now fetch the results from the ProcessingEnvironment
-                        processing_results = (
-                            self.data_processing_env.fetch_results_of_batch(
-                                proc_batch_id
-                            )
-                        )
-
-                        if processing_results:
-                            # have the exporter export the results
-                            self.exporter.export_results(processing_results)
-                            # TODO function should return something the TH can react on
-                        else:
-                            self.logger.error(
-                                f"Did not receive any processing results for {proc_batch_id}"
-                            )
-                            break
-                    else:
-                        self.logger.error(
-                            f"Did not receive any results for batch {proc_batch_id}"
-                        )
-                        break
-                else:
-                    self._update_status(
-                        status_rows_dpe,
-                        status=ProcessingStatus.ERROR,
-                        proc_batch_id=proc_batch_id,
-                        proc_status_msg=proc_resp.status_text,
-                        proc_error_code=ErrorCode.BATCH_PROCESSING_NOT_STARTED,
-                    )
-                    self.logger.error(f"Could not process batch {proc_batch_id}")
-                    break  # finish the loop for now
-
-                # update the proc_batch_id and continue on
-                proc_batch_id += 1
-
+        # if a proc_batch was recovered, make sure to finish it from the last ProcessingStatus
+        if last_proc_batch:
+            if self._run_proc_batch(last_proc_batch, skip_steps) is True:
+                last_proc_batch_id += 1  # continue on
             else:
-                self.logger.error(f"Could not register batch {proc_batch_id}")
-                self._update_status(
-                    status_rows_dp,
-                    status=ProcessingStatus.ERROR,
-                    proc_batch_id=proc_batch_id,
-                    proc_status_msg=f"Could not register batch {proc_batch_id}",
-                    proc_error_code=ErrorCode.BATCH_REGISTER_FAILED,
-                )
+                self.logger.critical("Critical error whilst processing, quitting")
+
+        # ok now that the recovered proc_batch has completed, continue on from this proc_batch_id
+        proc_batch_id = last_proc_batch_id
+
+        # continue until all is finished or something breaks
+        while True:
+            # first get the next proc_batch from the DataProvider
+            status_rows = self._get_next_proc_batch(proc_batch_id, self.BATCH_SIZE)
+            if status_rows is None:
+                self.logger.info("No source_batch remaining, all done, quitting...")
                 break
 
-            # break  # finish the loop after one iteration for now
+            # now that we have a new proc_batch, pass it on to the ProcessingEnvironment
+            # and eventually the Exporter
+            if self._run_proc_batch(status_rows, proc_batch_id) is False:
+                self.logger.critical("Critical error whilst processing, quitting")
+                break
+
+            # update the proc_batch_id and continue on to the next
+            proc_batch_id += 1
+
+    # asks the DataProvider for a new proc_batch
+    def _get_next_proc_batch(
+        self, proc_batch_id: int, batch_size: int
+    ) -> Optional[List[StatusRow]]:
+        self.logger.info(
+            f"asking DataProvider for next batch: {proc_batch_id} ({batch_size})"
+        )
+        return self.data_provider.get_next_batch(proc_batch_id, batch_size)
+
+    # The proc_batch (list of StatusRow objects) is processed in 5 steps:
+    #
+    # 1. Register the batch in the ProcessingEnvironment
+    # 2. Tell the ProcessingEnvironment to start processing the batch
+    # 3. Monitor the ProcessingEnvironment's progress until it's done
+    # 4. Retrieve the output from the ProcessingEnvironment
+    # 5. Feed the output to the Exporter, so results are put in a happy place
+    def _run_proc_batch(
+        self, status_rows: List[StatusRow], proc_batch_id: int, skip_steps: int = 0
+    ) -> bool:
+
+        if skip_steps >= 5:
+            self.logger.warning(
+                f"Warning: why are you skipping so many (i.e. {skip_steps}) steps?"
+            )
+            return True
+
+        if skip_steps == 0:  # first register the batch in the proc env
+            if not self._register_proc_batch(proc_batch_id, status_rows):
+                return False
+
+        if skip_steps < 2:  # Alright let's ask the proc env to start processing
+            if not self._process_proc_batch(proc_batch_id):
+                return False
+
+        if skip_steps < 3:  # monitor the processing, until it returns the results
+            if not self._monitor_proc_batch(proc_batch_id):
+                return False
+
+        if skip_steps < 5:
+            # now fetch the results from the ProcessingEnvironment
+            # even if this was already done, it's required again for the unfinished export
+            processing_results = self._fetch_proc_batch_output(proc_batch_id)
+
+            if processing_results and self._export_proc_batch_output(
+                proc_batch_id, processing_results
+            ):
+                return True
+            else:
+                return False
+
+        return True
+
+    # calls the ProcessingEnvironment to register the supplied proc_batch
+    def _register_proc_batch(
+        self, proc_batch_id: int, proc_batch: List[StatusRow]
+    ) -> bool:
+        self.logger.info(f"Registering batch: {proc_batch_id}")
+        status_rows = self.data_processing_env.register_batch(proc_batch_id, proc_batch)
+        if status_rows is None:
+            self.logger.error(f"Could not register batch {proc_batch_id}, quitting")
+            return False
+        self.logger.info(f"Successfully registered batch: {proc_batch_id}")
+        return True
+
+    # calls the ProcessingEnvironment to start processing the proc_batch
+    def _process_proc_batch(self, proc_batch_id: int) -> bool:
+        self.logger.info(f"Triggering proc_batch to start processing: {proc_batch_id}")
+        status_rows = self.data_processing_env.process_batch(proc_batch_id)
+        if status_rows is None:
+            self.logger.error(
+                f"Could not trigger proc_batch {proc_batch_id} to start processing, quitting"
+            )
+            return False
+        self.logger.info(f"Successfully triggered the process for: {proc_batch_id}")
+        return True
+
+    # calls the ProcessingEnvironment to start monitoring the progress of the proc_batch
+    def _monitor_proc_batch(self, proc_batch_id: int) -> bool:
+        self.logger.info(
+            f"Start monitoring proc_batch until it finishes: {proc_batch_id}"
+        )
+        status_rows = self.data_processing_env.monitor_batch(proc_batch_id)
+        if status_rows is None:
+            self.logger.error(
+                f"Error while monitoring proc_batch: {proc_batch_id}, quitting"
+            )
+            return False
+        self.logger.info(
+            f"Successfully monitored proc_batch: {proc_batch_id} till it finished"
+        )
+        return True
+
+    # calls the ProcessingEnvironment to fetch the results of the processed proc_batch
+    def _fetch_proc_batch_output(
+        self, proc_batch_id: int
+    ) -> Optional[List[ProcessingResult]]:
+        self.logger.info(f"Fetching output data for proc_batch: {proc_batch_id}")
+        output = self.data_processing_env.fetch_results_of_batch(proc_batch_id)
+        if output is None:
+            self.logger.error(
+                f"Did not receive any processing results for {proc_batch_id}, quitting"
+            )
+            return None
+        self.logger.info(
+            f"Successfully retrieved output for proc_batch {proc_batch_id}"
+        )
+        return output
+
+    # calls the Exporter to export the processing output of the proc_batch
+    def _export_proc_batch_output(
+        self, proc_batch_id: int, processing_results: List[ProcessingResult]
+    ) -> bool:
+        self.logger.info(f"Exporting proc_batch output: {proc_batch_id}")
+        if not self.exporter.export_results(processing_results):
+            self.logger.warning(f"Could not export proc_batch {proc_batch_id} output")
+            return False
+
+        self.logger.info(f"Successfully exported proc_batch {proc_batch_id} output")
+        return True
 
 
 # test a full workflow
 if __name__ == "__main__":
     from dane_workflows.util.base_util import load_config
-    from dane_workflows.util.status_util import SQLiteStatusHandler
+    from dane_workflows.status import SQLiteStatusHandler
     from dane_workflows.data_provider import ExampleDataProvider
     from dane_workflows.data_processing import (
         ExampleDataProcessingEnvironment,
