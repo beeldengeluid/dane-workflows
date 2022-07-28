@@ -134,7 +134,7 @@ class ExampleDataProvider(DataProvider):
                 self.config["SOURCE_BATCH_SIZE"], int
             ), "ExampleDataProvider.SOURCE_BATCH_SIZE"
             assert check_setting(
-                self.config.get("DATA", None), dict, True
+                self.config.get("DATA", None), list, True
             ), "ExampleDataProvider.DATA"
         except AssertionError as e:
             self.logger.error(f"Configuration error: {str(e)}")
