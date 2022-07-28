@@ -114,8 +114,12 @@ class DataProvider(ABC):
 
 class ExampleDataProvider(DataProvider):
     def __init__(self, config, status_handler: StatusHandler, unit_test: bool = False):
-        self.data = [{"id": str(uuid4()), "url": f"https://{x}"} for x in range(0, 100)]
         super(ExampleDataProvider, self).__init__(config, status_handler, unit_test)
+
+        # either set dummy data OR data provided via self.config["DATA"]
+        self.data = [{"id": str(uuid4()), "url": f"https://{x}"} for x in range(0, 100)]
+        if self.config.get("DATA", None) is not None:
+            self.data = self.config["DATA"]
 
         # now that the config has been validated, assign the config to global vars (for readability)
         self.SOURCE_BATCH_SIZE: int = self.config["SOURCE_BATCH_SIZE"]
@@ -129,6 +133,9 @@ class ExampleDataProvider(DataProvider):
             assert check_setting(
                 self.config["SOURCE_BATCH_SIZE"], int
             ), "ExampleDataProvider.SOURCE_BATCH_SIZE"
+            assert check_setting(
+                self.config.get("DATA", None), dict, True
+            ), "ExampleDataProvider.DATA"
         except AssertionError as e:
             self.logger.error(f"Configuration error: {str(e)}")
             return False
