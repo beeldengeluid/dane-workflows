@@ -80,7 +80,9 @@ class DataProcessingEnvironment(ABC):
             )
         return None
 
-    def register_batch(self, proc_batch_id: int, batch: list) -> Optional[List[StatusRow]]:
+    def register_batch(
+        self, proc_batch_id: int, batch: list
+    ) -> Optional[List[StatusRow]]:
         status_rows = self._register_batch(proc_batch_id, batch)
         if status_rows is None:  # in case of an error update the status
             status_rows = self._set_register_batch_failed(batch, proc_batch_id)
@@ -201,15 +203,17 @@ class DANEEnvironment(DataProcessingEnvironment):
     def _register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        self.logger.debug(f"Calling DANEHandler to register proc_batch: {proc_batch_id}")
+        self.logger.debug(
+            f"Calling DANEHandler to register proc_batch: {proc_batch_id}"
+        )
         return self.dane_handler.register_batch(proc_batch_id, batch)
 
     # tells DANE to start processing Task=self.TASK_ID on registered docs
     def _process_batch(self, proc_batch_id: int) -> ProcEnvResponse:
-        self.logger.debug(f"Calling DANEHandler to start processing proc_batch: {proc_batch_id}")
-        return self.dane_handler.process_batch(
-            proc_batch_id
+        self.logger.debug(
+            f"Calling DANEHandler to start processing proc_batch: {proc_batch_id}"
         )
+        return self.dane_handler.process_batch(proc_batch_id)
 
     # When finished returns a list of updated StatusRows
     def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:

@@ -11,6 +11,12 @@ from dane_workflows.status import StatusRow, ProcessingStatus
 
 
 @unique
+class DANEBatchState(Enum):
+    SUCCESS = "success"  # in DANE API response contains list of successes
+    FAILED = "failed"  # in DANE API response contains list of failures
+
+
+@unique
 class TaskType(Enum):
     NER = "NER"  # Named Entity Recognition
     ASR = "ASR"  # Automatic Speech Recognition
@@ -266,19 +272,48 @@ class DANEHandler:
     def _to_updated_status_rows(
         self, batch: List[StatusRow], dane_resp: dict
     ) -> List[StatusRow]:
-        self.logger.debug("TODO implement this!!")
+        if dane_resp is None:
+            self.logger.warning("DANE response was empty")
+            return None
+
+        # first extract all the DANE documents (failed or successful)
         self.logger.debug(json.dumps(dane_resp, indent=4, sort_keys=True))
-        dane_docs = [
-            Document.from_json(doc["document"]) for doc in dane_resp["success"]
-        ]
-        dane_docs.extend(
-            [Document.from_json(doc["document"]) for doc in dane_resp["failed"]]
-        )
+        dane_docs = self.__extract_docs_by_state(dane_resp, DANEBatchState.SUCCESS)
+        dane_docs.extend(self.__extract_docs_by_state(dane_resp, DANEBatchState.FAILED))
+
+        # now map the target IDs (matching StatusRow.target_id) to each DANE Document for lookup
         dane_mapping = {doc.target["id"]: doc for doc in dane_docs}
+
+        # update the StatusRows by setting the proc_id via the DANE Document._id
         for row in batch:
             row.proc_id = dane_mapping[row.target_id]._id
             row.status = ProcessingStatus.BATCH_REGISTERED
         return batch
+
+    # returns a list of DANE Documents, of a certain state, from JSON data returned by the DANE API
+    def __extract_docs_by_state(
+        self, dane_api_resp: dict, state: DANEBatchState
+    ) -> List[Document]:
+        if dane_api_resp.get(state.value, None) is None:
+            return []
+
+        dane_docs = []
+        for json_doc in dane_api_resp[state.value]:
+            doc = self.__to_dane_doc(json_doc)
+            if doc is not None:
+                dane_docs.append(doc)
+        return dane_docs
+
+    # converts JSON data (part of DANE API response) into DANE Documents
+    def __to_dane_doc(self, json_data: dict) -> Optional[Document]:
+        self.logger.debug(f"Converting JSON to DANE Document {json_data}")
+        if json_data is None:
+            self.logger.warning("No json_data supplied")
+            return None
+        doc = json_data
+        if json_data.get("document", None) is not None:
+            doc = json_data["document"]
+        return Document.from_json(doc) if doc and doc.get("_id") is not None else None
 
     def _persist_registered_batch(self, proc_batch_id: int, dane_resp: dict) -> bool:
         self.logger.debug("Persisting DANE status")

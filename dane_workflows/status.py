@@ -297,10 +297,12 @@ class StatusHandler(ABC):
                 row.proc_error_code = proc_error_code
         return status_rows
 
-    def persist_or_die(self, status_rows:Optional[List[StatusRow]]):
+    def persist_or_die(self, status_rows: Optional[List[StatusRow]]):
         self.logger.debug(f"Persist or die; status_rows are ok: {status_rows is None}")
         if self.persist(status_rows) is False:
-            self.logger.critical("Could not persists status, so quitting to avoid corrupt state")
+            self.logger.critical(
+                "Could not persists status, so quitting to avoid corrupt state"
+            )
             sys.exit()
 
     def persist(self, status_rows: Optional[List[StatusRow]]) -> bool:
