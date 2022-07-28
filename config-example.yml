@@ -9,6 +9,13 @@ DATA_PROVIDER:  # configures: ExampleDataProvider
   TYPE: ExampleDataProvider
   CONFIG: 
     SOURCE_BATCH_SIZE: 10
+    DATA:
+      - 
+        id: "test"
+        url: "video-server/something"
+      - 
+        id: "test2"
+        url: "video-server/somethingelse"
 STATUS_HANDLER:
   TYPE: SQLiteStatusHandler
   CONFIG:

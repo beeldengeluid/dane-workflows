@@ -118,7 +118,9 @@ class ExampleDataProvider(DataProvider):
 
         # either set dummy data OR data provided via self.config["DATA"]
         self.data = [{"id": str(uuid4()), "url": f"https://{x}"} for x in range(0, 100)]
+        self.logger.debug(self.config.get("DATA", None))
         if self.config.get("DATA", None) is not None:
+            self.logger.info(f"Setting {len(self.config['DATA'])} of custom items")
             self.data = self.config["DATA"]
 
         # now that the config has been validated, assign the config to global vars (for readability)
