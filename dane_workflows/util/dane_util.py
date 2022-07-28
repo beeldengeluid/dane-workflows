@@ -305,6 +305,7 @@ class DANEHandler:
         return dane_docs
 
     # converts JSON data (part of DANE API response) into DANE Documents
+    # TODO make sure to fix irregular JSON data in DANE core library
     def __to_dane_doc(self, json_data: dict) -> Optional[Document]:
         self.logger.debug(f"Converting JSON to DANE Document {json_data}")
         if json_data is None:
