@@ -144,7 +144,13 @@ class TaskScheduler(object):
 
         # if a proc_batch was recovered, make sure to finish it from the last ProcessingStatus
         if last_proc_batch:
-            if self._run_proc_batch(last_proc_batch, skip_steps) is True:
+            self.logger.info(
+                f"Recovered proc_batch {last_proc_batch_id}, finishing it up"
+            )
+            if (
+                self._run_proc_batch(last_proc_batch, last_proc_batch_id, skip_steps)
+                is True
+            ):
                 last_proc_batch_id += 1  # continue on
             else:
                 self.logger.critical("Critical error whilst processing, quitting")
@@ -188,7 +194,9 @@ class TaskScheduler(object):
     def _run_proc_batch(
         self, status_rows: List[StatusRow], proc_batch_id: int, skip_steps: int = 0
     ) -> bool:
-
+        self.logger.info(
+            f"Processing proc_batch {proc_batch_id}, skipping {skip_steps} steps"
+        )
         if skip_steps >= 5:
             self.logger.warning(
                 f"Warning: why are you skipping so many (i.e. {skip_steps}) steps?"

@@ -4,7 +4,7 @@ import requests
 from time import sleep
 from enum import Enum, unique
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from elasticsearch7 import Elasticsearch
 from dane import Document
 from dane_workflows.status import StatusRow, ProcessingStatus
@@ -91,12 +91,15 @@ class DANEHandler:
         batch_data = self._load_batch_file(proc_batch_id)
         if batch_data is None:
             return None
-        doc_ids = []
-        if "success" in batch_data:
-            doc_ids.extend([doc["document"]["_id"] for doc in batch_data["success"]])
-        if "failed" in batch_data:
-            doc_ids.extend([doc["document"]["_id"] for doc in batch_data["failed"]])
-        return doc_ids if len(doc_ids) > 0 else None
+
+        # extract al docs (failed/success) from the persisted proc_batch file
+        dane_docs = self.__extract_docs_by_state(batch_data, DANEBatchState.SUCCESS)
+        dane_docs.extend(
+            self.__extract_docs_by_state(batch_data, DANEBatchState.FAILED)
+        )
+
+        # return the ids only
+        return [doc._id for doc in dane_docs] if len(dane_docs) > 0 else None
 
     """
     ------------------------------ ES FUNCTIONS (UNDESIRABLE, BUT REQUIRED) ----------------
@@ -168,8 +171,11 @@ class DANEHandler:
     def get_tasks_of_batch(
         self, proc_batch_id: int, all_tasks: List[Task], offset=0, size=200
     ) -> List[Task]:
+        self.logger.info(
+            f"Fetching tasks of proc_batch {proc_batch_id} from DANE index"
+        )
         query = self._generate_tasks_of_batch_query(proc_batch_id, offset, size)
-
+        self.logger.debug(json.dumps(query, indent=4, sort_keys=True))
         result = self.DANE_ES.search(
             index=self.DANE_ES_INDEX,
             body=query,
@@ -188,7 +194,9 @@ class DANEHandler:
     def get_results_of_batch(
         self, proc_batch_id: int, all_results: List[Result], offset=0, size=200
     ) -> List[Result]:
-        self.logger.debug(f"Fetching results for batch: {proc_batch_id}")
+        self.logger.debug(
+            f"Fetching results of proc_batch: {proc_batch_id} from DANE index"
+        )
         query = self._generate_results_of_batch_query(proc_batch_id, offset, size)
         self.logger.debug(json.dumps(query, indent=4, sort_keys=True))
         result = self.DANE_ES.search(
@@ -328,7 +336,7 @@ class DANEHandler:
             return False
 
     # called by DANEProcessingEnvironment.process_batch()
-    def process_batch(self, proc_batch_id: int):
+    def process_batch(self, proc_batch_id: int) -> Tuple[bool, int, str]:
         task_type = TaskType(self.DANE_TASK_ID)
         self.logger.debug(
             f"going to submit {task_type.value} for the following doc IDs"
@@ -337,7 +345,7 @@ class DANEHandler:
         if doc_ids is None:
             return (
                 False,
-                403,
+                404,
                 f"No doc_ids found in {self._get_batch_file_name(proc_batch_id)}",
             )
         task = {
@@ -345,7 +353,30 @@ class DANEHandler:
             "key": task_type.value,  # e.g. ASR, DOWNLOAD
         }
         r = requests.post(self.DANE_TASK_ENDPOINT, data=json.dumps(task))
-        return r.status_code == 200, r.status_code, r.text
+        return (
+            r.status_code == 200,
+            r.status_code,
+            self.__parse_dane_process_response(r.text),
+        )
+
+    # TODO avoid persisting this JSON response in StatusRow.proc_status_msg
+    def __parse_dane_process_response(self, resp_data: str) -> str:
+        """
+        {
+            "success": [],
+            "failed": [
+                {
+                    "document_id": "7976d2fe40f880c3e074c743c881ef5763ad342c",
+                    "error": "Task `BG_DOWNLOAD` already assigned to document `7976d2fe40f880c3e074c743c881ef5763ad342c`"
+                },
+                {
+                    "document_id": "7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c",
+                    "error": "Task `BG_DOWNLOAD` already assigned to document `7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c`"
+                }
+            ]
+        }
+        """
+        return resp_data
 
     # returns a list of DANE Tasks when done
     def monitor_batch(self, proc_batch_id: int, verbose=False) -> List[Task]:

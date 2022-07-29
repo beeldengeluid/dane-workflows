@@ -97,6 +97,10 @@ class DataProcessingEnvironment(ABC):
 
     def monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
         status_rows = self._monitor_batch(proc_batch_id)
+        if status_rows is None:
+            self.logger.error(
+                f"Monitoring of proc_batch {proc_batch_id} returned nothing"
+            )
         self.status_handler.persist_or_die(status_rows)
         return status_rows
 
@@ -213,7 +217,11 @@ class DANEEnvironment(DataProcessingEnvironment):
         self.logger.debug(
             f"Calling DANEHandler to start processing proc_batch: {proc_batch_id}"
         )
-        return self.dane_handler.process_batch(proc_batch_id)
+        success, status_code, response_text = self.dane_handler.process_batch(
+            proc_batch_id
+        )
+        self.logger.info(f"DANE returned status: {status_code}")
+        return ProcEnvResponse(success, status_code, response_text)
 
     # When finished returns a list of updated StatusRows
     def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
@@ -275,9 +283,9 @@ class DANEEnvironment(DataProcessingEnvironment):
     # Converts list of Task objects into StatusRows
     def _to_status_rows(self, proc_batch_id: int, tasks_of_batch: List[Task]):
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
-        if status_rows is None or tasks_of_batch is None:
+        if status_rows is None or tasks_of_batch is None or len(tasks_of_batch) == 0:
             self.logger.warning(
-                f"tasks_of_batch({tasks_of_batch is None}) or status_rows({status_rows is None}) is empty"
+                f"Empty tasks_of_batch({tasks_of_batch}) or status_rows({status_rows})"
             )
             return None
         # Task.doc_id is used for more generic proc_id
