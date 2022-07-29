@@ -270,11 +270,9 @@ class StatusHandler(ABC):
         return status_rows if len(status_rows) > 0 else None
 
     def get_cur_source_batch_id(self) -> int:
-        return (
-            self.cur_source_batch[0].source_batch_id
-            if self.cur_source_batch is not None
-            else -1
-        )
+        if self.cur_source_batch and len(self.cur_source_batch) > 0:
+            return self.cur_source_batch[0].source_batch_id
+        return -1
 
     """ --------------------- ALL STATUS ROWS FUNCTIONS ------------------ """
 
