@@ -1,7 +1,9 @@
 from os import sep
 import pytest
 
-from mockito import unstub
+from mockito import unstub, when, verify, spy2, ANY
+from test_util import new_batch
+from datetime import datetime
 from dane_workflows.status import (
     ExampleStatusHandler,
     SQLiteStatusHandler,
@@ -67,14 +69,76 @@ def test_update_status_rows(config):
         unstub()
 
 
-def test_persist(config):
+@pytest.mark.parametrize(
+    ("status_rows", "success"),
+    [
+        (new_batch(0, ProcessingStatus.NEW, None, 5), True),  # only this should succeed
+        (None, False),
+        ({}, False),
+        ("", False),
+    ],
+)
+def test_persist__input_types(config, status_rows, success):
     try:
         status_handler = ExampleStatusHandler(config)
-        assert status_handler is not None
+        spy2(status_handler._persist)
+        spy2(status_handler._update_status_rows_modification_date)
+        spy2(status_handler._recover_source_batch)
+        assert status_handler.persist(status_rows) is success
+        verify(status_handler, times=1 if success else 0)._persist(ANY)
+        verify(
+            status_handler, times=1 if success else 0
+        )._update_status_rows_modification_date(ANY)
+        verify(status_handler, times=1 if success else 0)._recover_source_batch()
+
     finally:
         unstub()
 
-    """ --------------------- SQLLITE Status Handler Tests ------------------ """
+
+def test_persist__failed_source_batch_recovery(config):
+    status_handler = ExampleStatusHandler(config)
+    status_rows = new_batch(0, ProcessingStatus.NEW, None, 5)
+    with when(status_handler)._recover_source_batch().thenReturn(False):
+        spy2(status_handler._persist)
+        spy2(status_handler._update_status_rows_modification_date)
+
+        assert status_handler.persist(status_rows) is False
+        verify(status_handler, times=1)._persist(ANY)
+        verify(status_handler, times=1)._update_status_rows_modification_date(ANY)
+        verify(status_handler, times=1)._recover_source_batch()
+
+
+# test if the _update_status_rows_modification_date function
+# assigns a fresh date_modified to each StatusRow
+def test_update_status_rows_modification_date(config):
+    try:
+        status_handler = ExampleStatusHandler(config)
+
+        # create some StatusRow objects, a default date_modified should be assigned
+        # (see test__default_status_row_date_fields())
+        status_rows = new_batch(0, ProcessingStatus.NEW, None, 5)
+
+        # after this function call, all rows should have a fresh date_modified
+        updated_rows = status_handler._update_status_rows_modification_date(status_rows)
+        for row in updated_rows:
+            td = datetime.now() - row.date_modified
+            assert td.total_seconds() <= 2
+            assert td.total_seconds() > 0
+
+    finally:
+        unstub()
+
+
+# tests if the StatusRow object is always supplied with date_modified and date_created
+def test__default_status_row_date_fields(config):
+    status_rows = new_batch(0, ProcessingStatus.NEW, None, 5)
+    assert all(
+        row.date_modified is not None and row.date_created is not None
+        for row in status_rows
+    )
+
+
+""" --------------------- SQLLITE Status Handler Tests ------------------ """
 
 
 @pytest.mark.parametrize(
