@@ -11,6 +11,7 @@ from dane_workflows.util.base_util import (
     validate_file_paths,
 )
 import sqlite3
+from datetime import datetime
 from sqlite3 import Error
 
 """
@@ -97,6 +98,8 @@ class StatusRow:
     proc_error_code: Optional[
         ErrorCode
     ]  # in case of status == ERROR, learn more about why
+    date_created: datetime = datetime.now()  # YYYY-MM-DD HH:MM:SS.SSS
+    date_modified: datetime = datetime.now()  # YYYY-MM-DD HH:MM:SS.SSS
 
     def __hash__(self):
         return hash(f"{self.target_id}{self.target_url}")
@@ -310,7 +313,8 @@ class StatusHandler(ABC):
             )
             return False
 
-        if self._persist(status_rows):
+        # make sure to update the date_modified before persisting
+        if self._persist(self._update_status_rows_modification_date(status_rows)):
             self.logger.debug(
                 "persisted updated status_rows, now syncing with current source batch"
             )
@@ -319,6 +323,13 @@ class StatusHandler(ABC):
             )  # make sure the source batch is also updated
         self.logger.error("Could not persist status rows!")
         return False
+
+    def _update_status_rows_modification_date(
+        self, status_rows: List[StatusRow]
+    ) -> List[StatusRow]:
+        for row in status_rows:
+            row.date_modified = datetime.now()
+        return status_rows
 
     def recover(
         self, data_provider
@@ -472,7 +483,7 @@ class SQLiteStatusHandler(StatusHandler):
         conn = self._create_connection(self.DB_FILE)
         with conn:
             for row in status_rows:
-                self._insert_or_replace_status_row(conn, self._to_tuple(row))
+                self._save_status_row(conn, row)
             return True
         return False
 
@@ -773,6 +784,8 @@ class SQLiteStatusHandler(StatusHandler):
             proc_id integer,
             proc_status_msg text,
             proc_error_code integer,
+            date_created text,
+            date_modified text,
             PRIMARY KEY (target_id, target_url)
         );"""
 
@@ -782,6 +795,12 @@ class SQLiteStatusHandler(StatusHandler):
         except ZeroDivisionError:
             return tuple()
         return tup[n:] + tup[0:n]
+
+    def _to_sqlite_date(self, dt: datetime) -> str:
+        return dt.strftime("%Y-%m-%d %H:%M:%S.%f")[0:-3]
+
+    def _to_datetime(self, sqlite_date_string: str) -> datetime:
+        return datetime.strptime(sqlite_date_string, "%Y-%m-%d %H:%M:%S.%f")
 
     def _to_tuple(self, row: StatusRow):
         t = (
@@ -795,6 +814,8 @@ class SQLiteStatusHandler(StatusHandler):
             row.proc_id,
             row.proc_status_msg,
             row.proc_error_code.value if row.proc_error_code is not None else None,
+            self._to_sqlite_date(row.date_created),
+            self._to_sqlite_date(row.date_modified),
         )
         return t
 
@@ -811,33 +832,14 @@ class SQLiteStatusHandler(StatusHandler):
                 row[7],
                 row[8],
                 ErrorCode(row[9]) if row[9] else None,
+                self._to_datetime(row[10]),
+                self._to_datetime(row[11]),
             )
             for row in db_rows
         ]
 
-    def _create_status_row(self, conn, row_tuple) -> int:
-        self.logger.debug(row_tuple)
-        sql = """
-            INSERT INTO status_rows(
-                target_id,
-                target_url,
-                status,
-                source_batch_id,
-                source_batch_name,
-                source_extra_info,
-                proc_batch_id,
-                proc_id,
-                proc_status_msg,
-                proc_error_code
-            )
-            VALUES(?,?,?,?,?,?,?,?,?,?)
-        """
-        cur = conn.cursor()
-        cur.execute(sql, row_tuple)
-        conn.commit()
-        return cur.lastrowid
-
-    def _insert_or_replace_status_row(self, conn, row_tuple):
+    def _save_status_row(self, conn, status_row: StatusRow):
+        row_tuple = self._to_tuple(status_row)
         self.logger.info("Creating/updating status row")
         self.logger.debug(row_tuple)
         sql = """
@@ -851,9 +853,11 @@ class SQLiteStatusHandler(StatusHandler):
                 proc_batch_id,
                 proc_id,
                 proc_status_msg,
-                proc_error_code
+                proc_error_code,
+                date_created,
+                date_modified
             )
-            VALUES(?,?,?,?,?,?,?,?,?,?)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
         """
         cur = conn.cursor()
         cur.execute(sql, row_tuple)
