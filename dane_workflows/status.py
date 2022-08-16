@@ -299,7 +299,9 @@ class StatusHandler(ABC):
         return status_rows
 
     def persist_or_die(self, status_rows: Optional[List[StatusRow]]):
-        self.logger.debug(f"Persist or die; status_rows are ok: {status_rows is None}")
+        self.logger.debug(
+            f"Persist or die; status_rows are ok: {status_rows is not None}"
+        )
         if self.persist(status_rows) is False:
             self.logger.critical(
                 "Could not persists status, so quitting to avoid corrupt state"
@@ -307,9 +309,9 @@ class StatusHandler(ABC):
             sys.exit()
 
     def persist(self, status_rows: Optional[List[StatusRow]]) -> bool:
-        if not status_rows or type(status_rows) != list:
+        if not status_rows or type(status_rows) != list or len(status_rows) == 0:
             self.logger.warning(
-                "Warning: trying to update status with invalid/empty status data"
+                f"Warning: trying to update status with invalid/empty status data {type(status_rows)}"
             )
             return False
 
@@ -327,6 +329,7 @@ class StatusHandler(ABC):
     def _update_status_rows_modification_date(
         self, status_rows: List[StatusRow]
     ) -> List[StatusRow]:
+        self.logger.debug("Updating modification date before persisting to DB")
         for row in status_rows:
             row.date_modified = datetime.now()
         return status_rows
@@ -460,7 +463,7 @@ class SQLiteStatusHandler(StatusHandler):
 
     # called on start-up of the TaskScheduler
     def _recover_source_batch(self) -> bool:
-        self.logger.debug("Recovering source batch")
+        self.logger.debug("Recovering source batch from DB")
         source_batch_id = self.get_last_source_batch_id()
         if source_batch_id == -1:
             self.logger.info("no source batch ID found in DB, nothing to recover")

@@ -111,6 +111,7 @@ class DataProcessingEnvironment(ABC):
                 f"Error obtaining ProcessingResults for proc_batch {proc_batch_id}"
             )
             return None
+        self.logger.info(f"Retrieved {len(results)} results for proc_batch {proc_batch_id}")
         status_rows = [
             r.status_row for r in results
         ]  # extract the status_rows from the results
@@ -302,7 +303,6 @@ class DANEEnvironment(DataProcessingEnvironment):
 class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
     def __init__(self, config, status_handler: StatusHandler, unit_test: bool = False):
         super().__init__(config, status_handler, unit_test)
-        self.batch: List[StatusRow] = []
 
     def _validate_config(self):
         return True
@@ -315,7 +315,6 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
         for row in batch:
             row.proc_id = str(uuid4())  # processing ID in processing env
             row.status = ProcessingStatus.BATCH_REGISTERED
-        self.batch = batch
         return batch
 
     # normally calls an external system to start processing, now just returns it's all good
@@ -325,7 +324,7 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
 
     # pretends that within 3 seconds the whole batch was successfully processed
     def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
-        self.logger.debug(f"Monitoring batch: {proc_batch_id}")
+        self.logger.debug(f"Monitoring (example) batch: {proc_batch_id}")
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
         if status_rows is not None:
             for row in status_rows:
@@ -338,10 +337,15 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
     def _fetch_results_of_batch(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
-        for row in self.batch:
+        self.logger.debug(
+            f"Asking (example) proc env for results of proc_batch {proc_batch_id}"
+        )
+        # just fetch the StatusRows, update their statusses and convert them into ProcessingResults
+        status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
+        for row in status_rows:
             row.status = ProcessingStatus.RESULTS_FETCHED
 
-        return [ProcessingResult(row, {}, {}) for row in self.batch]
+        return [ProcessingResult(row, {}, {}) for row in status_rows]
 
 
 # Test your DataProcessingEnvironment in isolation
