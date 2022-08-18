@@ -18,6 +18,10 @@ A workflow is able to iteratively:
 - obtain results from the processing environment
 - pass results to an `Exporter`, which typically reconsiles the processed data with the source data     
 
+The following image illustrates the dane-workflows architecture:
+
+![Image](architecture.png)
+
 # Getting started
 
 ## Prerequisites
