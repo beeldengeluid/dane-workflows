@@ -111,7 +111,9 @@ class DataProcessingEnvironment(ABC):
                 f"Error obtaining ProcessingResults for proc_batch {proc_batch_id}"
             )
             return None
-        self.logger.info(f"Retrieved {len(results)} results for proc_batch {proc_batch_id}")
+        self.logger.info(
+            f"Retrieved {len(results)} results for proc_batch {proc_batch_id}"
+        )
         status_rows = [
             r.status_row for r in results
         ]  # extract the status_rows from the results
@@ -342,6 +344,11 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
         )
         # just fetch the StatusRows, update their statusses and convert them into ProcessingResults
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
+        if status_rows is None:
+            self.logger.warning(
+                f"Could not retrieve data for proc_batch {proc_batch_id}"
+            )
+            return None
         for row in status_rows:
             row.status = ProcessingStatus.RESULTS_FETCHED
 
