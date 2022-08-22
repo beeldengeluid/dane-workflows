@@ -55,13 +55,46 @@ TODO finalise
 
 # Usage
 
-TODO (add example workflows to this repo, then write this)
+After installing dane-workflows in your local environment, you can run an example workflow with:
+
+```
+python main.py
+```
+
+This example script uses `config-example.yml` to configure and run a workflow using the following implementations:
+
+- **DataProvider**: ExampleDataProvider (with two dummy input documents)
+- **DataProcessingEnvironment**: ExampleDataProcessingEnvironment (mocks processing environment)
+- **StatusHandler**: SQLiteStatusHandler (writes output to `./proc_stats/all_stats.db`)
+- **Exporter**: ExampleExporter (does nothing with results)
+
+To setup a workflow for your own purposes, consider the following:
+
+## What data do I want to process?
+
+We've provided the `ExampleDataProvider` to easily feed a workflow with a couple of files (via config.`yml`). This is mostly for testing out your workflow.
+
+Mostly likely you'll need to implement your own `DataProvider` by subclassing it. This way you can e.g. load your input data from a database, spreadsheet or whatever else you need.
+
+## Which processing environment will I use?
+
+Since this project is developed to at least interface with running [DANE environments](https://github.com/beeldengeluid/dane-environments) we've provided `DANEEnvironment` as a default implementation of `DataProcessingEnvironment`.
+
+In case you'd like to call any other tool for processing your data, you're required to implement a subclass of `DataProcessingEnvironment`.
+
+## What I will I do with the output of the processing environment?
+
+After your `DataProcessingEnvironment` has processed a batch of items from your `DataProvider` the `TaskScheduler` hands over the output data to your subclass of `Exporter`. 
+
+Since this is the most use-case dependant part of any workflow, we do not provide any useful default implementation. 
+
+Note: `ExampleExporter` is only used as a placeholder for tests or dry runs.
 
 # Roadmap
 
+- [x] Implement more advanced recovery
+- [x] Add example workflows (refer in README)
 - [ ] Finalise initial README
-- [ ] Implement more advanced recovery
-- [ ] Add example workflows (refer in README)
 - [ ] Add [Python docstring](https://www.askpython.com/python/python-docstring)
 
 See the [open issues](https://github.com/beeldengeluid/dane-workflows/issues) for a full list of proposed features, known issues and user questions.
@@ -88,7 +121,7 @@ Runs on top of the StatusHandler database and visualises the overall progress of
 
 Iteratively called by the `TaskScheduler` to obtain a new batch of source data. No default implementations are available (yet), since there are many possible ways one would want to supply data to a system. Simply subclass from `DataProvider` to have full control over your input flow.
 
-## ProcessingEnvironment
+## DataProcessingEnvironment
 
 Iteratively called by the `TaskScheduler` to submit batches of data to an (external) processing environment. Also takes care of obtaining the output of finished processes from such an environment.
 
