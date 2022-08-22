@@ -85,7 +85,9 @@ class DataProvider(ABC):
                     )
                     return None
                 self.status_handler.set_current_source_batch(new_source_batch)
-                self.logger.info("Loaded new source_batch in memory, now fetching the first proc_batch")
+                self.logger.info(
+                    "Loaded new source_batch in memory, now fetching the first proc_batch"
+                )
                 return self.get_next_batch(
                     proc_batch_id, batch_size, called_recursively=True
                 )
@@ -121,7 +123,9 @@ class ExampleDataProvider(DataProvider):
             self.logger.info(f"Setting {len(self.config['DATA'])} of custom items")
             self.data = self.config["DATA"]
         else:
-            self.logger.info("No DATA specfied in config, continuing with 100 dummy items")
+            self.logger.info(
+                "No DATA specfied in config, continuing with 100 dummy items"
+            )
 
         # now that the config has been validated, assign the config to global vars (for readability)
         self.SOURCE_BATCH_SIZE: int = self.config["SOURCE_BATCH_SIZE"]
