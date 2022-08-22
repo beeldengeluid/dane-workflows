@@ -1,5 +1,5 @@
 LOGGING:  # configures: dane_workflows.base_util
-  NAME : daan-asr-aws
+  NAME : my_workflow_logs
   LEVEL: DEBUG
   DIR: logs  # where to store log files
 TASK_SCHEDULER:  # configures: dane_workflows.task_scheduler
@@ -9,27 +9,28 @@ DATA_PROVIDER:  # configures: ExampleDataProvider
   TYPE: ExampleDataProvider
   CONFIG: 
     SOURCE_BATCH_SIZE: 10
-    DATA:
+    DATA:  # usually DANE environments simply require an ID and content URL to work 
       - 
-        id: "test"
-        url: "video-server/something"
+        id: "video_1"  # should refer to your source catalog ID
+        url: "https://your_video_file_1.mp4"  # publicly accessible video
       - 
-        id: "test2"
-        url: "video-server/somethingelse"
-STATUS_HANDLER:
+        id: "video_1"
+        url: "https://your_video_files_2.mp4"
+STATUS_HANDLER:  # recommended implementation; stores to local file
   TYPE: SQLiteStatusHandler
   CONFIG:
-    DB_FILE : ../proc_stats/all_stats.db  # where to store the db
-PROC_ENV:  # configures: DANEProcessingEnvironment in data_processing.py
-  TYPE: DANEEnvironment
-  CONFIG: 
-    DANE_HOST: "your-dane-host"
-    DANE_TASK_ID: "DOWNLOAD"  # tested BG_DOWNLOAD, which works; now testing ASR
-    DANE_STATUS_DIR : ../dane_stats
-    DANE_MONITOR_INTERVAL: 3  # seconds
-    DANE_ES_HOST: 'your-dane-es-host'
-    DANE_ES_PORT: 1234
-    DANE_ES_INDEX: 'dane-index-your-env'
-    DANE_ES_QUERY_TIMEOUT: 20 #seconds?
-EXPORTER:
+    DB_FILE : ./proc_stats/all_stats.db  # Local file db
+PROC_ENV:  # to connect to a DANE environment, set TYPE to DANEEnvironment and provide a valid CONFIG
+  TYPE: ExampleDataProcessingEnvironment
+  # TYPE: DANEEnvironment
+  # CONFIG: 
+  #   DANE_HOST: "your-dane-host"
+  #   DANE_TASK_ID: "DOWNLOAD"  # tested BG_DOWNLOAD, which works; now testing ASR
+  #   DANE_STATUS_DIR : ../dane_stats
+  #   DANE_MONITOR_INTERVAL: 3  # seconds
+  #   DANE_ES_HOST: 'your-dane-es-host'
+  #   DANE_ES_PORT: 1234
+  #   DANE_ES_INDEX: 'dane-index-your-env'
+  #   DANE_ES_QUERY_TIMEOUT: 20 #seconds?
+EXPORTER:  # implement your own Exporter by subclassing from Exporter
   TYPE: ExampleExporter

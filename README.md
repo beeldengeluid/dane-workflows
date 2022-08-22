@@ -31,6 +31,14 @@ The following image illustrates the dane-workflows architecture:
 
 ## Installation
 
+Install via pypi.org, using e.g.
+
+```
+pip install dane-workflows
+```
+
+### local development
+
 Run `poetry install`. After completion run:
 
 ```
@@ -69,6 +77,12 @@ Main process that handles all the steps described in the [Definition of a workfl
 ## StatusHandler
 
 Keeps track of the workflow status, esuring recovery after crashes. By default the status is persisted to a SQLite database file, using the `SQLiteStatusHandler` but other implementations can be made by subclassing `StatusHandler`. 
+
+## StatusMonitor
+
+Note: This component is currently implemented and not yet available. 
+
+Runs on top of the StatusHandler database and visualises the overall progress of a workflow in a human-readable manner (e.g. show the % of successfully/failed processed items)
 
 ## DataProvider
 

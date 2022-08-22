@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "dane_workflows"
 version = "0.1.0"
-description = "Library providing batch upload & monitoring for DANE environments"
+description = "Library providing batch upload & monitoring for (DANE) processing environments"
 readme = "README.md"
 authors = [
     "jblom <jblom@beeldengeluid.nl>",

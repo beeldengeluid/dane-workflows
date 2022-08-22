@@ -255,8 +255,7 @@ class StatusHandler(ABC):
 
     # called by the data provider to start keeping track of the latest source batch
     def set_current_source_batch(self, status_rows: List[StatusRow]):
-        self.logger.debug("Setting new source batch")
-        self.logger.debug(status_rows)
+        self.logger.debug(f"Setting new source_batch of {len(status_rows) if status_rows else 0} items")
         self.cur_source_batch = status_rows  # set the new source batch data
         return self._persist(status_rows)
 
@@ -368,7 +367,6 @@ class StatusHandler(ABC):
             else None
         )
 
-
 class ExampleStatusHandler(StatusHandler):
     def __init__(self, config):
         super().__init__(config)
@@ -379,10 +377,11 @@ class ExampleStatusHandler(StatusHandler):
 
     # called on start-up of the TaskScheduler
     def _recover_source_batch(self) -> bool:
-        self.logger.debug(f"{self.__class__.__name__} cannot recover any status")
+        self.logger.debug(f"{self.__class__.__name__} simply mocks source_batch recovery")
         self.cur_source_batch: List[StatusRow] = []
         return True  # just return true, so super.persist() will work in unit tests
 
+    # NOTE: does not persist anything. TODO implement in-memory storage
     def _persist(self, status_rows: List[StatusRow]) -> bool:
         return True  # does nothing, returns True to satisfy set_current_source_batch
 

@@ -76,9 +76,7 @@ class DataProvider(ABC):
             new_source_batch = self.fetch_source_batch_data(
                 self.status_handler.get_cur_source_batch_id() + 1
             )
-            self.logger.debug("new source batch is not None?")
-            self.logger.debug(new_source_batch)
-            self.logger.debug(type(new_source_batch))
+            self.logger.info(f"New source_batch is ok: {new_source_batch is not None}")
             if new_source_batch:  # make the StatusHandler track the new batch
                 if called_recursively:
                     # we have a problem, as we are in an infinite loop
@@ -86,14 +84,14 @@ class DataProvider(ABC):
                         "Entering infinite loop in get_next_batch(), breaking out"
                     )
                     return None
-                self.logger.debug("Just set a new source batch, processing continues!")
                 self.status_handler.set_current_source_batch(new_source_batch)
+                self.logger.info("Loaded new source_batch in memory, now fetching the first proc_batch")
                 return self.get_next_batch(
                     proc_batch_id, batch_size, called_recursively=True
                 )
             else:  # no more data available
-                self.logger.debug(
-                    "No more data available from source, task scheduler should quit"
+                self.logger.info(
+                    "No more data available from source, TaskScheduler should quit"
                 )
                 return None
 
@@ -122,6 +120,8 @@ class ExampleDataProvider(DataProvider):
         if self.config.get("DATA", None) is not None:
             self.logger.info(f"Setting {len(self.config['DATA'])} of custom items")
             self.data = self.config["DATA"]
+        else:
+            self.logger.info("No DATA specfied in config, continuing with 100 dummy items")
 
         # now that the config has been validated, assign the config to global vars (for readability)
         self.SOURCE_BATCH_SIZE: int = self.config["SOURCE_BATCH_SIZE"]
