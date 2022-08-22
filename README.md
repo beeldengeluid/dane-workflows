@@ -128,7 +128,7 @@ Note: `ExampleExporter` is only used as a placeholder for tests or dry runs.
 
 - [x] Implement more advanced recovery
 - [x] Add example workflows (refer in README)
-- [ ] Finalise initial README
+- [x] Finalise initial README
 - [ ] Add [Python docstring](https://www.askpython.com/python/python-docstring)
 
 See the [open issues](https://github.com/beeldengeluid/dane-workflows/issues) for a full list of proposed features, known issues and user questions.

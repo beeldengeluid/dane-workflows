@@ -9,3 +9,4 @@ dane_stats
 .idea*
 .pytest_cache
 .coverage
+.pypirc
