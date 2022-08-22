@@ -9,6 +9,14 @@ Python library for creating "processing workflows" that use [DANE environments](
 
 This Python library is however not limited to using [DANE](https://github.com/CLARIAH/DANE), but cannot also be used to hook up any API that does something with generating certain data from certain input data.
 
+# Achitecture
+
+The following image illustrates the dane-workflows architecture:
+
+![Image](architecture.png)
+
+The following section details more about concepts illustrated in the image.
+
 # Definition of a workflow
 
 A workflow is able to iteratively:
@@ -18,9 +26,35 @@ A workflow is able to iteratively:
 - obtain results from the processing environment
 - pass results to an `Exporter`, which typically reconsiles the processed data with the source data     
 
-The following image illustrates the dane-workflows architecture:
+As mentioned in the definition of a workflow, this Python library works with the following components/concepts:
 
-![Image](architecture.png)
+## TaskScheduler
+
+Main process that handles all the steps described in the [Definition of a workflow]()
+
+## StatusHandler
+
+Keeps track of the workflow status, esuring recovery after crashes. By default the status is persisted to a SQLite database file, using the `SQLiteStatusHandler` but other implementations can be made by subclassing `StatusHandler`. 
+
+## StatusMonitor
+
+**Note**: This component is currently implemented and not yet available. 
+
+Runs on top of the StatusHandler database and visualises the overall progress of a workflow in a human-readable manner (e.g. show the % of successfully/failed processed items)
+
+## DataProvider
+
+Iteratively called by the `TaskScheduler` to obtain a new batch of source data. No default implementations are available (yet), since there are many possible ways one would want to supply data to a system. Simply subclass from `DataProvider` to have full control over your input flow.
+
+## DataProcessingEnvironment
+
+Iteratively called by the `TaskScheduler` to submit batches of data to an (external) processing environment. Also takes care of obtaining the output of finished processes from such an environment.
+
+This library contains a full implementation, `DANEEnvironment`, for interacting with [DANE environments](https://github.com/beeldengeluid/dane-environments), but other environments/APIs can be supported by subclassing from `ProcessingEnvironment`.
+
+## Exporter
+
+Called by the `TaskScheduler` with output data from a processing environment. No default implementation is available (yet), since this is typically the most use-case sensitive part of any workflow, meaning you should decide what to do with the output data (by subclassing `Exporter`).
 
 # Getting started
 
@@ -98,38 +132,6 @@ Note: `ExampleExporter` is only used as a placeholder for tests or dry runs.
 - [ ] Add [Python docstring](https://www.askpython.com/python/python-docstring)
 
 See the [open issues](https://github.com/beeldengeluid/dane-workflows/issues) for a full list of proposed features, known issues and user questions.
-
-# This library
-
-The structure of this library is as follows:
-
-## TaskScheduler
-
-Main process that handles all the steps described in the [Definition of a workflow]()
-
-## StatusHandler
-
-Keeps track of the workflow status, esuring recovery after crashes. By default the status is persisted to a SQLite database file, using the `SQLiteStatusHandler` but other implementations can be made by subclassing `StatusHandler`. 
-
-## StatusMonitor
-
-Note: This component is currently implemented and not yet available. 
-
-Runs on top of the StatusHandler database and visualises the overall progress of a workflow in a human-readable manner (e.g. show the % of successfully/failed processed items)
-
-## DataProvider
-
-Iteratively called by the `TaskScheduler` to obtain a new batch of source data. No default implementations are available (yet), since there are many possible ways one would want to supply data to a system. Simply subclass from `DataProvider` to have full control over your input flow.
-
-## DataProcessingEnvironment
-
-Iteratively called by the `TaskScheduler` to submit batches of data to an (external) processing environment. Also takes care of obtaining the output of finished processes from such an environment.
-
-This library contains a full implementation, `DANEEnvironment`, for interacting with [DANE environments](https://github.com/beeldengeluid/dane-environments), but other environments/APIs can be supported by subclassing from `ProcessingEnvironment`.
-
-## Exporter
-
-Called by the `TaskScheduler` with output data from a processing environment. No default implementation is available (yet), since this is typically the most use-case sensitive part of any workflow, meaning you should decide what to do with the output data (by subclassing `Exporter`).
 
 
 # License
