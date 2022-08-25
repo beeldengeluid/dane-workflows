@@ -141,7 +141,11 @@ class StatusMonitor(ABC):
         raise NotImplementedError("All StatusMonitors should implement this")
 
 
-def ExampleStatusMonitor(StatusMonitor):
+class ExampleStatusMonitor(StatusMonitor):
+    def __init__(self, status_handler: StatusHandler):
+        super(ExampleStatusMonitor, self).__init__(status_handler)
+
+
     def _format_status_info(self, status_info: dict):
         """ Format the basis status information as json
         Args:
@@ -186,4 +190,7 @@ def ExampleStatusMonitor(StatusMonitor):
         formatted_status_info =  self._format_status_info(status_info)
         formatted_error_report = self._format_error_report(error_report)
         self._send_status(formatted_status_info, formatted_error_report)
+
+def SlackStatusMonitor(StatusMonitor):
+
 
