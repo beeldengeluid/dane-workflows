@@ -1,10 +1,13 @@
+from abc import ABC, abstractmethod
+import json
+
 from dane_workflows.status import StatusHandler, ProcessingStatus, ErrorCode
 import datetime
 
 
-class StatusMonitor:
+class StatusMonitor(ABC):
     def __init__(
-        self, config: dict, status_handler: StatusHandler
+        self, status_handler: StatusHandler
     ):
         self.status_handler = status_handler
 
@@ -95,3 +98,92 @@ class StatusMonitor:
             ] = self.status_handler.get_status_counts_per_extra_info_value()
 
         return error_report
+    
+    @abstractmethod
+    def _format_status_info(self, status_info: dict):
+        """ Format the basis status information as json
+        Args:
+        - status_info - the basic status information
+        Returns:
+        - formatted string for the basic status information
+        """
+        # basic superclass implementation is a json dump
+        formatted_status_info = json.dump(status_info)
+
+        return formatted_status_info
+
+    @abstractmethod
+    def _format_error_report(self, error_report: dict):
+        """ Format the detailed status info 
+        Args:
+        - error_report - detailed status information
+        Returns:
+        - formatted strings for the detailed error report
+        """
+        raise NotImplementedError("All StatusMonitors should implement this")
+    
+    @abstractmethod
+    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+        """ Send status
+        Args:
+        - formatted_status - a string containing the formatted status information
+        - formatted_error_report - Optional: a string containing the formatted error report
+        Returns:
+        """
+        raise NotImplementedError("All StatusMonitors should implement this")
+
+    
+    @abstractmethod
+    def monitor_status(self):
+        """ Retrieves the status and error information and communicates this via the
+        chosen method (implemented in _send_status())
+        """
+        raise NotImplementedError("All StatusMonitors should implement this")
+
+
+def ExampleStatusMonitor(StatusMonitor):
+    def _format_status_info(self, status_info: dict):
+        """ Format the basis status information as json
+        Args:
+        - status_info - the basic status information
+        Returns:
+        - formatted string for the basic status information
+        """
+        # basic superclass implementation is a json dump
+        formatted_status_info = json.dump(status_info)
+
+        return formatted_status_info
+
+    def _format_error_report(self, error_report: dict):
+        """ Format the detailed status info as json
+        Args:
+        - error_report - detailed status information
+        Returns:
+        - formatted strings for the detailed error report
+        """
+        # basic superclass implementation is a json dump
+        formatted_error_report = json.dump(error_report)
+
+        return formatted_error_report
+    
+    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+        """ Send status to terminal
+        Args:
+        - formatted_status - a string containing the formatted status information
+        - formatted_error_report - Optional: a string containing the formatted error report
+        Returns:
+        """
+        print("STATUS INFO:")
+        print(formatted_status)
+        print("DETAILED ERROR REPORT:")
+        print(formatted_error_report)
+    
+    def monitor_status(self):
+        """ Retrieves the status and error information and communicates this via the terminal
+        """
+        status_info = self._check_status
+        error_report = self._get_detailed_status_report(status_info)
+        formatted_status_info =  self._format_status_info(status_info)
+        formatted_error_report = self._format_error_report(error_report)
+        self._send_status(formatted_status_info, formatted_error_report)
+
