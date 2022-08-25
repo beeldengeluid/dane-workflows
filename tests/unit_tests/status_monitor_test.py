@@ -2,7 +2,6 @@ import pytest
 from mockito import when, verify
 
 from dane_workflows.status_monitor import StatusMonitor
-from dane_workflows.data_provider import ExampleDataProvider
 from dane_workflows.status import (
     ExampleStatusHandler,
     ProcessingStatus,
@@ -10,10 +9,10 @@ from dane_workflows.status import (
 )
 
 
-def test_check_status(config):
+def test__check_status(config):
     status_handler = ExampleStatusHandler(config)
     status_monitor = StatusMonitor(
-        config, status_handler, ExampleDataProvider(config, status_handler)
+        config, status_handler
     )
     dummy_last_proc_batch_id = 1
     dummy_last_source_batch_id = 2
@@ -69,11 +68,8 @@ def test_check_status(config):
         dummy_error_code_counts_for_source_batch
     ):
 
-        status_info = status_monitor.check_status()
+        status_info = status_monitor._check_status()
 
-        assert status_info["Date started"] == status_monitor.date_started.strftime(
-            "%Y-%m-%d"
-        )
         assert status_info["Last batch processed"] == dummy_last_proc_batch_id
         assert status_info["Last source batch retrieved"] == dummy_last_source_batch_id
 
@@ -111,10 +107,10 @@ def test_check_status(config):
 
 
 @pytest.mark.parametrize("include_extra_info", [False, True])
-def test_get_detailed_status_report(config, include_extra_info):
+def test__get_detailed_status_report(config, include_extra_info):
     status_handler = ExampleStatusHandler(config)
     status_monitor = StatusMonitor(
-        config, status_handler, ExampleDataProvider(config, status_handler)
+        config, status_handler
     )
 
     dummy_incomplete = ["dummy-incomplete-1", "dummy-incomplete-2"]
@@ -125,7 +121,7 @@ def test_get_detailed_status_report(config, include_extra_info):
         "dummy-complete-4",
     ]
     dummy_source_batch_id = "dummy-source-batch-id"
-    dummy_semantic_source_batch_id = "dummy-semantic-source-batch-id"
+    dummy_semantic_source_batch_name = "dummy-semantic-source-batch-name"
     dummy_status_counts = {
         ProcessingStatus.NEW: 1,
         ProcessingStatus.ERROR: 3,
@@ -151,11 +147,11 @@ def test_get_detailed_status_report(config, include_extra_info):
     ).get_last_source_batch_id().thenReturn(
         dummy_source_batch_id
     ), when(
-        ExampleDataProvider
-    )._to_semantic_source_batch_id(
+        ExampleStatusHandler
+    ).get_name_of_source_batch_id(
         dummy_source_batch_id
     ).thenReturn(
-        dummy_semantic_source_batch_id
+        dummy_semantic_source_batch_name
     ), when(
         ExampleStatusHandler
     ).get_status_counts().thenReturn(
@@ -170,7 +166,7 @@ def test_get_detailed_status_report(config, include_extra_info):
         dummy_status_counts_per_extra_info
     ):
 
-        status_report = status_monitor.get_detailed_status_report(include_extra_info)
+        status_report = status_monitor._get_detailed_status_report(include_extra_info)
 
         assert "Completed semantic source batch IDs" in status_report
         assert status_report["Completed semantic source batch IDs"] == dummy_complete
@@ -181,7 +177,7 @@ def test_get_detailed_status_report(config, include_extra_info):
         assert "Current semantic source batch ID" in status_report
         assert (
             status_report["Current semantic source batch ID"]
-            == dummy_semantic_source_batch_id
+            == dummy_semantic_source_batch_name
         )
         assert "Status overview" in status_report
         assert status_report["Status overview"] == dummy_status_counts
@@ -199,7 +195,7 @@ def test_get_detailed_status_report(config, include_extra_info):
 
         verify(ExampleStatusHandler, times=1).get_completed_semantic_source_batch_ids()
         verify(ExampleStatusHandler, times=1).get_last_source_batch_id()
-        verify(ExampleDataProvider, times=1)._to_semantic_source_batch_id(
+        verify(ExampleStatusHandler, times=1).get_name_of_source_batch_id(
             dummy_source_batch_id
         )
         verify(ExampleStatusHandler, times=1).get_status_counts()

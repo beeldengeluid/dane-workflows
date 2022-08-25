@@ -1,20 +1,16 @@
 from dane_workflows.status import StatusHandler, ProcessingStatus, ErrorCode
-from dane_workflows.data_provider import DataProvider
 import datetime
 
 
 class StatusMonitor:
     def __init__(
-        self, config: dict, status_handler: StatusHandler, data_provider: DataProvider
+        self, config: dict, status_handler: StatusHandler
     ):
         self.status_handler = status_handler
-        self.data_provider = data_provider
-        self.date_started = datetime.datetime.now()  # date_re_started
 
-    def check_status(self):
-        """Collects status information about this TaskScheduler and returns it in a dict
+    def _check_status(self):
+        """Collects status information about the tasks stored in the status_handler and returns it in a dict
         Returns: dict with status information
-        "Date started"  - the date the TaskScheduler was initialised
         "Last batch processed" - processing batch ID of the last batch processed
         "Last source batch retrieved" - source batch ID of the last batch retrieved from the data provider
         "Status information for last batch processed" - dict of statuses and their counts for the last batch processed
@@ -32,8 +28,7 @@ class StatusMonitor:
         print(f"LAST SOURCE BATCH {last_source_batch_id}")
 
         return {
-            # get date started
-            "Date started": self.date_started.strftime("%Y-%m-%d"),
+
             # get last batch processed
             "Last batch processed": last_proc_batch_id,
             # get last batch retrieved
@@ -66,8 +61,8 @@ class StatusMonitor:
             ],
         }
 
-    def get_detailed_status_report(self, include_extra_info):
-        """Gets a detailed status report on all batches completed by this TaskScheduler
+    def _get_detailed_status_report(self, include_extra_info):
+        """Gets a detailed status report on all batches whose status is stored in the status_handler
         Args:
             - include_extra_info - if this is true, then an overview of statuses per value of the extra_info
             field in the StatusRow is returned
@@ -87,8 +82,8 @@ class StatusMonitor:
         error_report = {
             "Completed semantic source batch IDs": completed_batch_ids,
             "Uncompleted semantic source batch IDs": uncompleted_batch_ids,
-            "Current semantic source batch ID": self.data_provider._to_semantic_source_batch_id(
-                self.status_handler.get_last_source_batch_id()
+            "Current semantic source batch ID": self.status_handler.get_name_of_source_batch_id(
+                self.status_handler.get_cur_source_batch_id()
             ),
             "Status overview": self.status_handler.get_status_counts(),
             "Error overview": self.status_handler.get_error_code_counts(),

@@ -49,7 +49,7 @@ testpaths = [
   "tests/unit_tests",
 ]
 addopts = [
-  "--cov",
+#  "--cov",
 ]
 
 [tool.coverage.run]

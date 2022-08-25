@@ -15,5 +15,3 @@ STATUS_HANDLER:
   TYPE: ExampleStatusHandler
 PROC_ENV:
   TYPE: ExampleDataProcessingEnvironment
-EXPORTER:
-  TYPE: ExampleExporter

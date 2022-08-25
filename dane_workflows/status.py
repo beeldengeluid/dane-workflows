@@ -167,6 +167,10 @@ class StatusHandler(ABC):
         raise NotImplementedError("Requires implementation")
 
     @abstractmethod
+    def get_name_of_source_batch_id(self, source_batch_id: int) -> str:
+        raise NotImplementedError("Requires implementation")
+
+    @abstractmethod
     def get_status_counts(self) -> Optional[dict]:
         """Counts the number of rows with each status
         Returns:
@@ -406,6 +410,9 @@ class ExampleStatusHandler(StatusHandler):
     def get_last_source_batch_id(self) -> int:
         return -1  # TODO implement
 
+    def get_name_of_source_batch_id(self, source_batch_id: int) -> str:
+        return "-1"  # TODO implement
+
     def get_status_counts(self) -> dict:
         return {}  # TODO implement
 
@@ -540,6 +547,16 @@ class SQLiteStatusHandler(StatusHandler):
                 conn, "SELECT MAX(source_batch_id) FROM status_rows", ()
             )
             return self._get_single_int_from_db_rows(db_rows)
+        return -1
+
+    def get_name_of_source_batch_id(self, source_batch_id: int) -> str:
+        conn = self._create_connection(self.DB_FILE)
+        with conn:
+            db_rows = self._run_select_query(
+                conn, "SELECT source_batch_name FROM status_rows WHERE source_batch_id = ? "
+                      "GROUP BY source_batch_name", (source_batch_id)
+            )
+            return self._get_single_str_from_db_rows(db_rows)
         return -1
 
     def get_status_counts(self) -> Optional[dict]:
@@ -717,6 +734,12 @@ class SQLiteStatusHandler(StatusHandler):
             t_value = db_rows[0]
             return t_value[0] if t_value[0] is not None else -1
         return -1
+
+    def _get_single_str_from_db_rows(self, db_rows):
+        if db_rows and type(db_rows) == list and len(db_rows) == 1:
+            t_value = db_rows[0]
+            return t_value[0] if t_value[0] is not None else "-1"
+        return "-1"
 
     def _get_groups_and_counts_from_db_rows(self, db_rows) -> Optional[dict]:
         """Processes the results of an aggregation for a group, e.g. COUNT and GROUP BY, to retrieve a single
