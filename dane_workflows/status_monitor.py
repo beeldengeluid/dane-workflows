@@ -1,15 +1,44 @@
 from abc import ABC, abstractmethod
+from ast import FormattedValue
 import json
+import sys
 
 from dane_workflows.status import StatusHandler, ProcessingStatus, ErrorCode
+from dane_workflows.util.base_util import (
+    get_logger,
+    check_setting,
+    load_config
+)
 import datetime
 
 
 class StatusMonitor(ABC):
     def __init__(
-        self, status_handler: StatusHandler
+        self, config: dict, status_handler: StatusHandler
     ):
         self.status_handler = status_handler
+
+        # check if the configured TYPE is the same as the StatusMonitor being instantiated
+        if self.__class__.__name__ != config["STATUS_MONITOR"]["TYPE"]:
+            print("Malconfigured class instance")
+            sys.exit()
+
+        self.logger = get_logger(config)
+        self.config = (
+            config["STATUS_MONITOR"]["CONFIG"]
+            if "CONFIG" in config["STATUS_MONITOR"]
+            else {})
+
+        # enforce config validation
+        if not self._validate_config():
+            self.logger.error("Malconfigured, quitting...")
+            sys.exit()
+
+
+    @abstractmethod
+    def _validate_config(self) -> bool:
+        raise NotImplementedError("All StatusMonitors should implement this")
+
 
     def _check_status(self):
         """Collects status information about the tasks stored in the status_handler and returns it in a dict
@@ -108,7 +137,7 @@ class StatusMonitor(ABC):
         - formatted string for the basic status information
         """
         # basic superclass implementation is a json dump
-        formatted_status_info = json.dump(status_info)
+        formatted_status_info = json.dumps(status_info)
 
         return formatted_status_info
 
@@ -142,20 +171,24 @@ class StatusMonitor(ABC):
 
 
 class ExampleStatusMonitor(StatusMonitor):
-    def __init__(self, status_handler: StatusHandler):
-        super(ExampleStatusMonitor, self).__init__(status_handler)
+    def __init__(self, config:dict, status_handler: StatusHandler):
+        super(ExampleStatusMonitor, self).__init__(config, status_handler)
+
+
+    def _validate_config(self):
+        return True  # no config needing further checking
 
 
     def _format_status_info(self, status_info: dict):
         """ Format the basis status information as json
         Args:
         - status_info - the basic status information
+        with 
         Returns:
         - formatted string for the basic status information
         """
         # basic superclass implementation is a json dump
-        formatted_status_info = json.dump(status_info)
-
+        formatted_status_info = json.dumps(status_info)
         return formatted_status_info
 
     def _format_error_report(self, error_report: dict):
@@ -166,7 +199,7 @@ class ExampleStatusMonitor(StatusMonitor):
         - formatted strings for the detailed error report
         """
         # basic superclass implementation is a json dump
-        formatted_error_report = json.dump(error_report)
+        formatted_error_report = json.dumps(error_report)
 
         return formatted_error_report
     
@@ -191,6 +224,123 @@ class ExampleStatusMonitor(StatusMonitor):
         formatted_error_report = self._format_error_report(error_report)
         self._send_status(formatted_status_info, formatted_error_report)
 
-def SlackStatusMonitor(StatusMonitor):
+
+class SlackStatusMonitor(StatusMonitor):
+    def __init__(self, config: dict, status_handler: StatusHandler):
+        super(SlackStatusMonitor, self).__init__(status_handler)
+
+    def _validate_config():
+        """Check that the config contains the necessary parameters for Slack"""
+        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        assert all(
+        [
+            x in self.config
+            for x in ["TOKEN", "CHANNEL", "WORKFLOW_NAME"]
+        ]
+        ), "STATUS_MONITOR.keys"
+        
+        assert check_setting(
+            self.config["TOKEN"], str
+        ), "SlackStatusMonitor.TOKEN"
+        
+        assert check_setting(
+            self.config["CHANNEL"], str
+        ), "SlackStatusMonitor.CHANNEL"
+        
+        assert check_setting(
+            self.config["WORKFLOW_NAME"], str
+        ), "SlackStatusMonitor.WORKFLOW_NAME"
+
+    
+
+    def _create_divider():
+        """" Create a divider block
+        Returns:
+        - returns a divider block
+        """
+        return {
+                "type": "divider"
+            }
+
+    def _create_basic_text_block(text):
+        """Add a block containing text
+        Args:
+        - text:
+            the text to put in the text block
+        Returns:
+        - returns the text block 
+        """
+        return{
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": text
+                }
+            }
+
+    def _format_status_info(self, status_info: dict):
+        """ Format the basis status information for slack
+        Args:
+        - status_info - the basic status information
+        Returns:
+        - formatted string for the basic status information
+        """
+        slack_status_info_dict = {}
+        slack_status_info_dict["blocks"]=[]
+        slack_status_info_dict.blocks.append(self._create_basic_text_block(f"*{self.config[WORKFLOW_NAME]} STATUS RAPORT*"))
+        for key, value in error_report.items():
+            match value:
+                case str() as value:
+                    text =f"*{key}*: {value}"
+                case dict() as value:
+                    text = f"*{key}*\n"
+                    for status_or_error, count in value.items():
+                        text+=f"{status_or_error}: {count}\n"
+            slack_status_info_dict.blocks.append(self._create_divider())
+            formatted_status_info.blocks.append(self._create_basic_text_block(text))
+
+        return json.dumps(formatted_status_info) 
 
 
+    def _format_error_report(self, error_report: dict):
+        """ Format the detailed status info for slack
+        Args:
+        - error_report - detailed status information
+        Returns:
+        - formatted strings for the detailed error report
+        """
+        return json.dumps(error_report)
+    
+
+    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+        """ Send status to slack
+        Args:
+        - formatted_status - a string containing the formatted status information
+        - formatted_error_report - Optional: a string containing the formatted error report
+        Returns:
+        """
+        slack = Slacker(self.config["TOKEN"])
+
+        slack.chat.post_message(channel=self.config["CHANNEL"], blocks=formatted_status, icon_emoji=":ghost:")
+
+        if formatted_error_report:
+                slack.files.upload(file_=formatted_error_report, channels=[self.config["CHANNEL"]], initial_comment="For more details, review this error file")
+
+
+    
+    def monitor_status(self):
+        """ Retrieves the status and error information and communicates this via the terminal
+        """
+        status_info = self._check_status
+        error_report = self._get_detailed_status_report(status_info)
+        formatted_status_info =  self._format_status_info(status_info)
+        formatted_error_report = self._format_error_report(error_report)
+        self._send_status(formatted_status_info, formatted_error_report)
+
+
+if __name__ == "__main__":
+
+    """Call this to test your chosen StatusMonitor independently. It will then run on the status handler specified in the config"""
+
+    config = load_config("../config-example.yml")  ## TODO: how do we get this to work from within a workflow with the correct config?
+    status_handler = SlackStatusMonitor(config)

@@ -1,7 +1,9 @@
+import json
 import pytest
 from mockito import when, verify
 
-from dane_workflows.status_monitor import StatusMonitor
+from dane_workflows.status_monitor import ExampleStatusMonitor, SlackStatusMonitor
+
 from dane_workflows.status import (
     ExampleStatusHandler,
     ProcessingStatus,
@@ -9,9 +11,11 @@ from dane_workflows.status import (
 )
 
 
+""" --------------------- Example Status Monitor Tests ------------------ """
+
 def test__check_status(config):
     status_handler = ExampleStatusHandler(config)
-    status_monitor = StatusMonitor(
+    status_monitor = ExampleStatusMonitor(
         config, status_handler
     )
     dummy_last_proc_batch_id = 1
@@ -109,7 +113,7 @@ def test__check_status(config):
 @pytest.mark.parametrize("include_extra_info", [False, True])
 def test__get_detailed_status_report(config, include_extra_info):
     status_handler = ExampleStatusHandler(config)
-    status_monitor = StatusMonitor(
+    status_monitor = ExampleStatusMonitor(
         config, status_handler
     )
 
@@ -203,3 +207,76 @@ def test__get_detailed_status_report(config, include_extra_info):
         verify(
             ExampleStatusHandler, times=1 if include_extra_info else 0
         ).get_status_counts_per_extra_info_value()
+
+
+""" --------------------- Slack Status Monitor Tests ------------------ """
+
+@pytest.mark.parametrize(('token', 'channel', 'workflow_name', 'expect_error'),[
+    (None, None, None, True),
+    ("dummy-token", None, None, True),
+    (None, "dummy-channel", None, True),
+    (None, None, "dummy-name", True),
+    ({}, "dummy-channel", "dummy-name", True),
+    ("dummy-token", 123, "dummy-name", True),
+    ("dummy-token", 'dummy-channel', 5.6, True),
+    ("dummy-token", "dummy-channel", "dummy-name", False),
+
+])
+
+def test_validate_config(token, channel, workflow_name, expect_error):
+    config = {"STATUS_MONITOR": {
+        "TYPE": "SlackStatusMonitor",
+        "CONFIG": {}}}
+    if token:
+        config["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = token
+    if channel:
+        config["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = channel
+    if workflow_name:
+        config["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"] = workflow_name
+
+    if expect_error:
+        with pytest.raises(SystemExit):
+            SlackStatusMonitor(config)
+    else:
+        assert SlackStatusMonitor(config)
+
+
+@pytest.mark.parametrize(("status_info", "config_independent_output"), [({"Last batch processed" : 12345,
+        "Status information for last batch processed": {"STATUS INFO 1": 12, "STATUS INFO 2" : 4}},
+        json.dumps({"blocks": [{
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": "*Last source batch retrieved*: 56789\n"
+                                }},
+                                {
+                                "type": "divider"
+                                },
+                                {
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": "*Status information for last batch processed*\n STATUS INFO 1: 12\n STATUS INFO 2: 4\n"
+                                }}]
+                    })
+        )])
+
+def test_format_status_info(status_info: dict, config_independent_output):
+    status_handler = ExampleStatusHandler(config)
+    status_monitor = SlackStatusMonitor(
+        config, status_handler
+    )
+    workflow_name_output = {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": self.config[WORKFLOW_NAME]
+                }
+            }
+    expected_output = f"{workflow_name_output}+{config_independent_output}"
+
+
+
+    status_info_string = status_monitor._format_status_info(status_info)
+    assert type(status_info_string) == str
+    assert status_info_string == expected_output
