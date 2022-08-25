@@ -14,10 +14,6 @@ EXPORTER:
 STATUS_HANDLER:
   TYPE: ExampleStatusHandler
 STATUS_MONITOR:  # optional, for monitoring 
-  TYPE: SlackStatusMonitor
-  CONFIG:
-    TOKEN: "<your token here>"
-    CHANNEL: "<your slack channel here>"
-    WORKFLOW_NAME: "TestWorkflow"
+  TYPE: ExampleStatusMonitor
 PROC_ENV:
   TYPE: ExampleDataProcessingEnvironment

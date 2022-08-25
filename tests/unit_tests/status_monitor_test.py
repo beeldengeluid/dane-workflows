@@ -152,6 +152,10 @@ def test__get_detailed_status_report(config, include_extra_info):
         dummy_source_batch_id
     ), when(
         ExampleStatusHandler
+    ).get_cur_source_batch_id().thenReturn(
+        dummy_source_batch_id
+    ), when(
+        ExampleStatusHandler
     ).get_name_of_source_batch_id(
         dummy_source_batch_id
     ).thenReturn(
@@ -198,7 +202,7 @@ def test__get_detailed_status_report(config, include_extra_info):
             assert "Status overview per extra info" not in status_report
 
         verify(ExampleStatusHandler, times=1).get_completed_semantic_source_batch_ids()
-        verify(ExampleStatusHandler, times=1).get_last_source_batch_id()
+        verify(ExampleStatusHandler, times=1).get_cur_source_batch_id()
         verify(ExampleStatusHandler, times=1).get_name_of_source_batch_id(
             dummy_source_batch_id
         )
@@ -261,8 +265,9 @@ def test_validate_config(token, channel, workflow_name, expect_error):
                     })
         )])
 
-def test_format_status_info(status_info: dict, config_independent_output):
+def test_format_status_info(config, status_info: dict, config_independent_output):
     status_handler = ExampleStatusHandler(config)
+    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
     status_monitor = SlackStatusMonitor(
         config, status_handler
     )
@@ -270,7 +275,7 @@ def test_format_status_info(status_info: dict, config_independent_output):
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": self.config[WORKFLOW_NAME]
+                    "text": config["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"]
                 }
             }
     expected_output = f"{workflow_name_output}+{config_independent_output}"
