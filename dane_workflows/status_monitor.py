@@ -227,7 +227,7 @@ class ExampleStatusMonitor(StatusMonitor):
 
 class SlackStatusMonitor(StatusMonitor):
     def __init__(self, config: dict, status_handler: StatusHandler):
-        super(SlackStatusMonitor, self).__init__(status_handler)
+        super(SlackStatusMonitor, self).__init__(config, status_handler)
 
     def _validate_config():
         """Check that the config contains the necessary parameters for Slack"""
