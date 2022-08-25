@@ -224,6 +224,7 @@ def test__get_detailed_status_report(config, include_extra_info):
 ])
 
 def test_validate_config(token, channel, workflow_name, expect_error):
+    status_handler = ExampleStatusHandler(config)
     config = {"STATUS_MONITOR": {
         "TYPE": "SlackStatusMonitor",
         "CONFIG": {}}}
@@ -236,9 +237,9 @@ def test_validate_config(token, channel, workflow_name, expect_error):
 
     if expect_error:
         with pytest.raises(SystemExit):
-            SlackStatusMonitor(config)
+            SlackStatusMonitor(config, status_handler)
     else:
-        assert SlackStatusMonitor(config)
+        assert SlackStatusMonitor(config, status_handler)
 
 
 @pytest.mark.parametrize(("status_info", "config_independent_output"), [({"Last batch processed" : 12345,
@@ -261,7 +262,7 @@ def test_validate_config(token, channel, workflow_name, expect_error):
                     })
         )])
 
-def test_format_status_info(status_info: dict, config_independent_output):
+def test_format_status_info(config, status_info: dict, config_independent_output):
     status_handler = ExampleStatusHandler(config)
     status_monitor = SlackStatusMonitor(
         config, status_handler
@@ -270,7 +271,7 @@ def test_format_status_info(status_info: dict, config_independent_output):
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": self.config[WORKFLOW_NAME]
+                    "text": config[WORKFLOW_NAME]
                 }
             }
     expected_output = f"{workflow_name_output}+{config_independent_output}"
