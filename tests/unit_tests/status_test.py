@@ -120,14 +120,13 @@ def test_update_status_rows_modification_date(config):
         # (see test__default_status_row_date_fields())
         status_rows = new_batch(0, ProcessingStatus.NEW, None, 5)
         old_row_date_modified = status_rows[0].date_modified
-        time.sleep(0.5)  # sleep to ensure new date_modified will be later
+        time.sleep(3)  # sleep to ensure new date_modified will be later
 
         # after this function call, all rows should have a fresh date_modified
         updated_rows = status_handler._update_status_rows_modification_date(status_rows)
         for row in updated_rows:
             td = row.date_modified - old_row_date_modified
-            assert td.total_seconds() <= 2
-            assert td.total_seconds() > 0
+            assert td.total_seconds() > 2
 
     finally:
         unstub()
