@@ -355,7 +355,7 @@ class SlackStatusMonitor(StatusMonitor):
 
         slack_client.chat_postMessage(channel=self.config["CHANNEL"], blocks=formatted_status, icon_emoji=":ghost:")
 
-        if formatted_error_report:
+        if formatted_error_report:  # only upload error file if has content
             slack_client.files_upload(content=formatted_error_report, channels=[self.config["CHANNEL"]], initial_comment="For more details, review this error file")
 
     def monitor_status(self):
