@@ -229,29 +229,36 @@ class SlackStatusMonitor(StatusMonitor):
     def __init__(self, config: dict, status_handler: StatusHandler):
         super(SlackStatusMonitor, self).__init__(config, status_handler)
 
-    def _validate_config():
+    def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
         self.logger.debug(f"Validating {self.__class__.__name__} config")
-        assert all(
-        [
-            x in self.config
-            for x in ["TOKEN", "CHANNEL", "WORKFLOW_NAME"]
-        ]
-        ), "STATUS_MONITOR.keys"
-        
-        assert check_setting(
-            self.config["TOKEN"], str
-        ), "SlackStatusMonitor.TOKEN"
-        
-        assert check_setting(
-            self.config["CHANNEL"], str
-        ), "SlackStatusMonitor.CHANNEL"
-        
-        assert check_setting(
-            self.config["WORKFLOW_NAME"], str
-        ), "SlackStatusMonitor.WORKFLOW_NAME"
 
-    
+        try:
+            assert all(
+            [
+                x in self.config
+                for x in ["TOKEN", "CHANNEL", "WORKFLOW_NAME"]
+            ]
+            ), "STATUS_MONITOR.keys"
+
+            assert check_setting(
+                self.config["TOKEN"], str
+            ), "SlackStatusMonitor.TOKEN"
+
+            assert check_setting(
+                self.config["CHANNEL"], str
+            ), "SlackStatusMonitor.CHANNEL"
+
+            assert check_setting(
+                self.config["WORKFLOW_NAME"], str
+            ), "SlackStatusMonitor.WORKFLOW_NAME"
+
+        except AssertionError as e:
+            self.logger.error(f"Configuration error: {str(e)}")
+            return False
+
+        return True
+
     @staticmethod
     def _create_divider():
         """" Create a divider block

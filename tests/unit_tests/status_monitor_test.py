@@ -226,24 +226,24 @@ def test__get_detailed_status_report(config, include_extra_info):
     ("dummy-token", "dummy-channel", "dummy-name", False),
 
 ])
-
-def test_validate_config(token, channel, workflow_name, expect_error):
-    status_handler = ExampleStatusHandler(config)
-    config = {"STATUS_MONITOR": {
-        "TYPE": "SlackStatusMonitor",
-        "CONFIG": {}}}
+def test_validate_config(config, token, channel, workflow_name, expect_error):
+    config_to_validate = config
+    config_to_validate["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
+    config_to_validate["STATUS_MONITOR"]["CONFIG"] = {}
     if token:
-        config["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = token
+        config_to_validate["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = token
     if channel:
-        config["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = channel
+        config_to_validate["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = channel
     if workflow_name:
-        config["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"] = workflow_name
+        config_to_validate["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"] = workflow_name
+
+    status_handler = ExampleStatusHandler(config_to_validate)
 
     if expect_error:
         with pytest.raises(SystemExit):
-            SlackStatusMonitor(config, status_handler)
+            SlackStatusMonitor(config_to_validate, status_handler)
     else:
-        assert SlackStatusMonitor(config, status_handler)
+        assert SlackStatusMonitor(config_to_validate, status_handler)
 
 
 @pytest.mark.parametrize(("status_info", "config_independent_output"), [({"Last batch processed" : 12345,
