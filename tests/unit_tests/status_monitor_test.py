@@ -1,7 +1,7 @@
 import json
 import pytest
 from mockito import mock, when, verify, ANY, ARGS, KWARGS
-import slacker
+import slack_sdk
 
 from dane_workflows.status_monitor import ExampleStatusMonitor, SlackStatusMonitor
 
@@ -305,18 +305,14 @@ def test__send_status(config, formatted_error_report):
     }
     status_monitor = SlackStatusMonitor(config, status_handler)
     dummy_formatted_status = "dummy formatted status"
-    mock_slacker_chat = mock(slacker.Chat)
-    mock_slacker_files = mock(slacker.Files)
 
-    with when(slacker).Chat(**KWARGS).thenReturn(mock_slacker_chat), \
-            when(slacker).Files(**KWARGS).thenReturn(mock_slacker_files), \
-            when(mock_slacker_chat).post_message(channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY), \
-        when(mock_slacker_files).upload(content=formatted_error_report, channels=ANY, initial_comment=ANY):
+    with when(slack_sdk.WebClient).chat_postMessage(channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY), \
+        when(slack_sdk.WebClient).files_upload(content=formatted_error_report, channels=ANY, initial_comment=ANY):
 
         status_monitor._send_status(dummy_formatted_status, formatted_error_report)
 
-        verify(mock_slacker_chat, times=1).post_message(channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY)
-        verify(mock_slacker_files, times=1 if formatted_error_report else 0).upload(content=formatted_error_report,
+        verify(slack_sdk.WebClient, times=1).chat_postMessage(channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY)
+        verify(slack_sdk.WebClient, times=1 if formatted_error_report else 0).files_upload(content=formatted_error_report,
                                                                                     channels=ANY, initial_comment=ANY)
 
 
