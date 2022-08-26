@@ -1,6 +1,7 @@
 import json
 import pytest
-from mockito import when, verify
+from mockito import mock, when, verify, ANY, ARGS, KWARGS
+import slacker
 
 from dane_workflows.status_monitor import ExampleStatusMonitor, SlackStatusMonitor
 
@@ -215,18 +216,21 @@ def test__get_detailed_status_report(config, include_extra_info):
 
 """ --------------------- Slack Status Monitor Tests ------------------ """
 
-@pytest.mark.parametrize(('token', 'channel', 'workflow_name', 'expect_error'),[
-    (None, None, None, True),
-    ("dummy-token", None, None, True),
-    (None, "dummy-channel", None, True),
-    (None, None, "dummy-name", True),
-    ({}, "dummy-channel", "dummy-name", True),
-    ("dummy-token", 123, "dummy-name", True),
-    ("dummy-token", 'dummy-channel', 5.6, True),
-    ("dummy-token", "dummy-channel", "dummy-name", False),
+
+@pytest.mark.parametrize(('token', 'channel', 'workflow_name', 'include_extra_info', 'expect_error'),[
+    (None, None, None, None, True),
+    ("dummy-token", None, None, None, True),
+    (None, "dummy-channel", None, None, True),
+    (None, None, "dummy-name", None, True),
+    (None, None, None, False, True),
+    ({}, "dummy-channel", "dummy-name", False, True),
+    ("dummy-token", 123, "dummy-name", False, True),
+    ("dummy-token", 'dummy-channel', 5.6, False, True),
+    ("dummy-token", 'dummy-channel', 5.6, "False", True),
+    ("dummy-token", "dummy-channel", "dummy-name", False, False),
 
 ])
-def test_validate_config(config, token, channel, workflow_name, expect_error):
+def test_validate_config(config, token, channel, workflow_name, include_extra_info, expect_error):
     config_to_validate = config
     config_to_validate["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
     config_to_validate["STATUS_MONITOR"]["CONFIG"] = {}
@@ -236,6 +240,8 @@ def test_validate_config(config, token, channel, workflow_name, expect_error):
         config_to_validate["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = channel
     if workflow_name:
         config_to_validate["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"] = workflow_name
+    if include_extra_info != None:
+        config_to_validate["STATUS_MONITOR"]["CONFIG"]["INCLUDE_EXTRA_INFO"] = include_extra_info
 
     status_handler = ExampleStatusHandler(config_to_validate)
 
@@ -284,3 +290,68 @@ def test_format_status_info(config, status_info: dict, config_independent_output
     status_info_string = status_monitor._format_status_info(status_info)
     assert type(status_info_string) == str
     assert status_info_string == expected_output
+
+
+@pytest.mark.parametrize('formatted_error_report', [
+    None,
+    "a formatted error report string"
+])
+def test__send_status(config, formatted_error_report):
+    status_handler = ExampleStatusHandler(config)
+    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
+    config["STATUS_MONITOR"]["CONFIG"] = {
+        "TOKEN": "a token",
+        "CHANNEL": "a channel",
+        "WORKFLOW_NAME": "a workflow name",
+        "INCLUDE_EXTRA_INFO": False,
+    }
+    status_monitor = SlackStatusMonitor(config, status_handler)
+    dummy_formatted_status = "dummy formatted status"
+    mock_slacker_chat = mock(slacker.Chat)
+    mock_slacker_files = mock(slacker.Files)
+
+    with when(slacker).Chat(**KWARGS).thenReturn(mock_slacker_chat), \
+            when(slacker).Files(**KWARGS).thenReturn(mock_slacker_files), \
+            when(mock_slacker_chat).post_message(channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY), \
+        when(mock_slacker_files).upload(content=formatted_error_report, channels=ANY, initial_comment=ANY):
+
+        status_monitor._send_status(dummy_formatted_status, formatted_error_report)
+
+        verify(mock_slacker_chat, times=1).post_message(channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY)
+        verify(mock_slacker_files, times=1 if formatted_error_report else 0).upload(content=formatted_error_report,
+                                                                                    channels=ANY, initial_comment=ANY)
+
+
+@pytest.mark.parametrize("include_extra_info", [False, True])
+def test_monitor_status(config, include_extra_info):
+    status_handler = ExampleStatusHandler(config)
+    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
+    config["STATUS_MONITOR"]["CONFIG"] = {
+        "TOKEN": "a token",
+        "CHANNEL": "a channel",
+        "WORKFLOW_NAME": "a workflow name",
+        "INCLUDE_EXTRA_INFO": include_extra_info
+    }
+    status_monitor = SlackStatusMonitor(config, status_handler)
+
+    dummy_status = {"dummy-key": "dummy-value"}
+    dummy_error_report = {"dummy-error-key": "dummy-error-value"}
+    dummy_formatted_status_info = "dummy formatted info"
+    dummy_formatted_error_report = "dummy formatted error report"
+
+    with when(status_monitor)._check_status().thenReturn(dummy_status), \
+        when(status_monitor)._get_detailed_status_report(include_extra_info=include_extra_info).thenReturn(dummy_error_report), \
+        when(status_monitor)._format_status_info(dummy_status).thenReturn(dummy_formatted_status_info), \
+        when(status_monitor)._format_error_report(dummy_error_report).thenReturn(dummy_formatted_error_report), \
+        when(status_monitor)._send_status(dummy_formatted_status_info, dummy_formatted_error_report):
+
+        status_monitor.monitor_status()
+
+        verify(status_monitor, times=1)._check_status()
+        verify(status_monitor, times=1)._get_detailed_status_report(include_extra_info=include_extra_info)
+        verify(status_monitor, times=1)._format_status_info(dummy_status)
+        verify(status_monitor, times=1)._format_error_report(dummy_error_report)
+        verify(status_monitor, times=1)._send_status(dummy_formatted_status_info, dummy_formatted_error_report)
+
+
+
