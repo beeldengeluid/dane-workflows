@@ -4,7 +4,7 @@ import json
 import sys
 from typing import Type
 
-from slacker import Slacker
+from slack_sdk import WebClient
 
 from dane_workflows.status import StatusHandler, ExampleStatusHandler, ProcessingStatus, ErrorCode
 from dane_workflows.util.base_util import (
@@ -352,12 +352,12 @@ class SlackStatusMonitor(StatusMonitor):
         - formatted_error_report - Optional: a string containing the formatted error report
         Returns:
         """
-        slack = Slacker(self.config["TOKEN"])
+        slack_client = WebClient(self.config["TOKEN"])
 
-        slack.chat.post_message(channel=self.config["CHANNEL"], blocks=formatted_status, icon_emoji=":ghost:")
+        slack_client.chat_postMessage(channel=self.config["CHANNEL"], blocks=formatted_status, icon_emoji=":ghost:")
 
         if formatted_error_report:
-                slack.files.upload(content=formatted_error_report, channels=[self.config["CHANNEL"]], initial_comment="For more details, review this error file")
+            slack_client.files_upload(content=formatted_error_report, channels=[self.config["CHANNEL"]], initial_comment="For more details, review this error file")
 
     def monitor_status(self):
         """ Retrieves the status and error information and communicates this via the terminal
