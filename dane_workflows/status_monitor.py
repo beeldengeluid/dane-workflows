@@ -252,7 +252,7 @@ class SlackStatusMonitor(StatusMonitor):
         ), "SlackStatusMonitor.WORKFLOW_NAME"
 
     
-
+    @staticmethod
     def _create_divider():
         """" Create a divider block
         Returns:
@@ -261,7 +261,8 @@ class SlackStatusMonitor(StatusMonitor):
         return {
                 "type": "divider"
             }
-
+    
+    @staticmethod
     def _create_basic_text_block(text):
         """Add a block containing text
         Args:
@@ -297,9 +298,9 @@ class SlackStatusMonitor(StatusMonitor):
                     for status_or_error, count in value.items():
                         text+=f"{status_or_error}: {count}\n"
             slack_status_info_dict.blocks.append(self._create_divider())
-            formatted_status_info.blocks.append(self._create_basic_text_block(text))
+            slack_status_info_dict.blocks.append(self._create_basic_text_block(text))
 
-        return json.dumps(formatted_status_info) 
+        return json.dumps(slack_status_info_dict) 
 
 
     def _format_error_report(self, error_report: dict):

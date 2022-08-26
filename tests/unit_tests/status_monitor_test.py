@@ -269,7 +269,7 @@ def test_validate_config(token, channel, workflow_name, expect_error):
 def test_format_status_info(config, status_info: dict, config_independent_output):
     status_handler = ExampleStatusHandler(config)
     config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
-    status_monitor = SlackStatusMonitor(config, status_handler)
+    slack_status_monitor = SlackStatusMonitor(config, status_handler)
     workflow_name_output = {
                 "type": "section",
                 "text": {
@@ -279,8 +279,8 @@ def test_format_status_info(config, status_info: dict, config_independent_output
             }
     expected_output = f"{workflow_name_output}+{config_independent_output}"
 
+    print("HERE")
 
-
-    status_info_string = status_monitor._format_status_info(status_info)
+    status_info_string =slack_status_monitor._format_status_info(status_info)
     assert type(status_info_string) == str
     assert status_info_string == expected_output
