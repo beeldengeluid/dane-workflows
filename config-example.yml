@@ -20,6 +20,12 @@ STATUS_HANDLER:  # recommended implementation; stores to local file
   TYPE: SQLiteStatusHandler
   CONFIG:
     DB_FILE : ./proc_stats/all_stats.db  # Local file db
+STATUS_MONITOR:  # optional, for monitoring 
+  TYPE: SlackStatusMonitor
+  CONFIG:
+    TOKEN: "<your token here>"
+    CHANNEL: "<your slack channel here>"
+    WORKFLOW_NAME: "<workflow name here>"
 PROC_ENV:  # to connect to a DANE environment, set TYPE to DANEEnvironment and provide a valid CONFIG
   TYPE: ExampleDataProcessingEnvironment
   # TYPE: DANEEnvironment

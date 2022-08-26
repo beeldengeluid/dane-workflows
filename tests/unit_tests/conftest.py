@@ -31,4 +31,5 @@ def slack_monitor_config():
     config["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = "some_random_token"
     config["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = "a_channel"
     config["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"] = "TESTING"
+    config["STATUS_MONITOR"]["CONFIG"]["INCLUDE_EXTRA_INFO"] = False
     return config
