@@ -316,9 +316,8 @@ class SlackStatusMonitor(StatusMonitor):
         Returns:
         - formatted string for the basic status information
         """
-        slack_status_info_dict = {}
-        slack_status_info_dict["blocks"]=[]
-        slack_status_info_dict["blocks"].append(self._create_basic_text_block(f'*{self.config["WORKFLOW_NAME"]} STATUS REPORT*'))
+        slack_status_info_list = []
+        slack_status_info_list.append(self._create_basic_text_block(f'*{self.config["WORKFLOW_NAME"]} STATUS REPORT*'))
         for key, value in status_info.items():
             match value:
                 case str() as value:
@@ -331,10 +330,10 @@ class SlackStatusMonitor(StatusMonitor):
                         text += f"{status_or_error}: {count}\n"
                 case _ :
                     raise TypeError(f'{type(value)} is of the wrong type or this type is not implemented')
-            slack_status_info_dict["blocks"].append(self._create_divider())
-            slack_status_info_dict['blocks'].append(self._create_basic_text_block(text))
+            slack_status_info_list.append(self._create_divider())
+            slack_status_info_list.append(self._create_basic_text_block(text))
 
-        return json.dumps(slack_status_info_dict) 
+        return slack_status_info_list
 
     def _format_error_report(self, error_report: dict):
         """ Format the detailed status info for slack

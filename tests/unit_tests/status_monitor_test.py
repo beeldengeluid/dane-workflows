@@ -253,8 +253,7 @@ def test_validate_config(config, token, channel, workflow_name, include_extra_in
 
 
 @pytest.mark.parametrize(("status_info", "expected_output"), [({"Last batch processed" : 12345,
-        "Status information for last batch processed": {"STATUS INFO 1": 12, "STATUS INFO 2" : 4}},
-        json.dumps({"blocks": [{
+        "Status information for last batch processed": {"STATUS INFO 1": 12, "STATUS INFO 2" : 4}},[{
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
@@ -278,16 +277,17 @@ def test_validate_config(config, token, channel, workflow_name, include_extra_in
                             "text": {
                                     "type": "mrkdwn",
                                     "text": "*Status information for last batch processed*\nSTATUS INFO 1: 12\nSTATUS INFO 2: 4\n"
-                                }}]
-                    })
+                                }
+                        }
+                    ]
         )])
 
 def test_format_status_info(slack_monitor_config, status_info: dict, expected_output):
     status_handler = ExampleStatusHandler(slack_monitor_config)
     slack_status_monitor = SlackStatusMonitor(slack_monitor_config, status_handler)
-    status_info_string =slack_status_monitor._format_status_info(status_info)
-    assert type(status_info_string) == str
-    assert status_info_string == expected_output
+    status_info_list =slack_status_monitor._format_status_info(status_info)
+    assert type(status_info_list) == list
+    assert status_info_list == expected_output
 
 
 @pytest.mark.parametrize('formatted_error_report', [
