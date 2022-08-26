@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from ast import FormattedValue
 import json
 import sys
+from typing import Type
 
 from dane_workflows.status import StatusHandler, ProcessingStatus, ErrorCode
 from dane_workflows.util.base_util import (
@@ -295,17 +296,21 @@ class SlackStatusMonitor(StatusMonitor):
         """
         slack_status_info_dict = {}
         slack_status_info_dict["blocks"]=[]
-        slack_status_info_dict.blocks.append(self._create_basic_text_block(f"*{self.config[WORKFLOW_NAME]} STATUS RAPORT*"))
-        for key, value in error_report.items():
+        slack_status_info_dict["blocks"].append(self._create_basic_text_block(f'*{self.config["WORKFLOW_NAME"]} STATUS REPORT*'))
+        for key, value in status_info.items():
             match value:
                 case str() as value:
-                    text =f"*{key}*: {value}"
+                    text = f"*{key}*: {value}"
+                case int() as value:
+                    text = f"*{key}*: {value}"
                 case dict() as value:
                     text = f"*{key}*\n"
                     for status_or_error, count in value.items():
-                        text+=f"{status_or_error}: {count}\n"
-            slack_status_info_dict.blocks.append(self._create_divider())
-            slack_status_info_dict.blocks.append(self._create_basic_text_block(text))
+                        text += f"{status_or_error}: {count}\n"
+                case _ :
+                    raise TypeError(f'{type(value)} is of the wrong type or this type is not implemented')
+            slack_status_info_dict["blocks"].append(self._create_divider())
+            slack_status_info_dict['blocks'].append(self._create_basic_text_block(text))
 
         return json.dumps(slack_status_info_dict) 
 

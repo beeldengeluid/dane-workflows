@@ -246,41 +246,39 @@ def test_validate_config(config, token, channel, workflow_name, expect_error):
         assert SlackStatusMonitor(config_to_validate, status_handler)
 
 
-@pytest.mark.parametrize(("status_info", "config_independent_output"), [({"Last batch processed" : 12345,
+@pytest.mark.parametrize(("status_info", "expected_output"), [({"Last batch processed" : 12345,
         "Status information for last batch processed": {"STATUS INFO 1": 12, "STATUS INFO 2" : 4}},
         json.dumps({"blocks": [{
-                                "type": "section",
-                                "text": {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "*TESTING STATUS REPORT*"
+                            }
+                        },
+                        {
+                            "type": "divider"
+                            },
+                        {
+                            "type": "section",
+                            "text": {
                                     "type": "mrkdwn",
-                                    "text": "*Last source batch retrieved*: 56789\n"
+                                    "text": "*Last batch processed*: 12345"
                                 }},
-                                {
-                                "type": "divider"
+                        {
+                            "type": "divider"
                                 },
-                                {
-                                "type": "section",
-                                "text": {
+                        {
+                            "type": "section",
+                            "text": {
                                     "type": "mrkdwn",
-                                    "text": "*Status information for last batch processed*\n STATUS INFO 1: 12\n STATUS INFO 2: 4\n"
+                                    "text": "*Status information for last batch processed*\nSTATUS INFO 1: 12\nSTATUS INFO 2: 4\n"
                                 }}]
                     })
         )])
 
-def test_format_status_info(config, status_info: dict, config_independent_output):
-    status_handler = ExampleStatusHandler(config)
-    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
-    slack_status_monitor = SlackStatusMonitor(config, status_handler)
-    workflow_name_output = {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": config["STATUS_MONITOR"]["CONFIG"]["WORKFLOW_NAME"]
-                }
-            }
-    expected_output = f"{workflow_name_output}+{config_independent_output}"
-
-    print("HERE")
-
+def test_format_status_info(slack_monitor_config, status_info: dict, expected_output):
+    status_handler = ExampleStatusHandler(slack_monitor_config)
+    slack_status_monitor = SlackStatusMonitor(slack_monitor_config, status_handler)
     status_info_string =slack_status_monitor._format_status_info(status_info)
     assert type(status_info_string) == str
     assert status_info_string == expected_output
