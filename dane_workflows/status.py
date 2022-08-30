@@ -199,7 +199,7 @@ class StatusHandler(ABC):
     @abstractmethod
     def get_error_code_counts_for_proc_batch_id(
         self, proc_batch_id: int
-    ) -> Optional[dict]:
+    ) -> dict:
         """Counts the number of rows with each error code for the processing batch
         Args:
             - proc_batch_id - id of the processing batch for which the statuses are counted
@@ -223,7 +223,7 @@ class StatusHandler(ABC):
     @abstractmethod
     def get_error_code_counts_for_source_batch_id(
         self, source_batch_id: int
-    ) -> Optional[dict]:
+    ) -> dict:
         """Counts the number of rows with each error code for the source batch
         Args:
             - source_batch_id - id of the source batch for which the statuses are counted
@@ -554,7 +554,7 @@ class SQLiteStatusHandler(StatusHandler):
         with conn:
             db_rows = self._run_select_query(
                 conn, "SELECT source_batch_name FROM status_rows WHERE source_batch_id = ? "
-                      "GROUP BY source_batch_name", (source_batch_id)
+                      "GROUP BY source_batch_name", (source_batch_id,)
             )
             return self._get_single_str_from_db_rows(db_rows)
         return -1
@@ -610,7 +610,7 @@ class SQLiteStatusHandler(StatusHandler):
 
     def get_error_code_counts_for_proc_batch_id(
         self, proc_batch_id: int
-    ) -> Optional[dict]:
+    ) -> dict:
         """Counts the number of rows with each error code for the processing batch
         Args:
             - proc_batch_id - id of the processing batch for which the statuses are counted
@@ -627,7 +627,7 @@ class SQLiteStatusHandler(StatusHandler):
                 (proc_batch_id,),
             )
             return self._get_groups_and_counts_from_db_rows(db_rows)
-        return None
+        return {}
 
     def get_status_counts_for_source_batch_id(
         self, source_batch_id: int
@@ -651,7 +651,7 @@ class SQLiteStatusHandler(StatusHandler):
 
     def get_error_code_counts_for_source_batch_id(
         self, source_batch_id: int
-    ) -> Optional[dict]:
+    ) -> dict:
         """Counts the number of rows with each error code for the source batch
         Args:
             - source_batch_id - id of the source batch for which the statuses are counted
@@ -668,7 +668,7 @@ class SQLiteStatusHandler(StatusHandler):
                 (source_batch_id,),
             )
             return self._get_groups_and_counts_from_db_rows(db_rows)
-        return None
+        return {}
 
     def get_status_counts_per_extra_info_value(self) -> Optional[dict]:
         """Counts the number of rows with each status for each extra_info value

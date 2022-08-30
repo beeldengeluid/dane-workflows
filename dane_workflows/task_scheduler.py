@@ -320,6 +320,7 @@ if __name__ == "__main__":
         # DANEEnvironment,
     )
     from dane_workflows.exporter import ExampleExporter
+    from dane_workflows.status_monitor import ExampleStatusMonitor
 
     print("Starting task scheduler")
     config = load_config("../config.yml")
@@ -332,6 +333,7 @@ if __name__ == "__main__":
         ExampleDataProvider,
         ExampleDataProcessingEnvironment,
         ExampleExporter,
+        ExampleStatusMonitor
     )
 
     ts.run()

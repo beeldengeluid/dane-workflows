@@ -93,7 +93,7 @@ class StatusMonitor(ABC):
                 ).items()
             ],
             "Error information for last batch processed": [
-                f"{ErrorCode(error_code)}: {count}"
+                f"{ErrorCode(error_code)}: {count}" if error_code else "N/A"
                 for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
                     last_proc_batch_id
                 ).items()
@@ -106,7 +106,7 @@ class StatusMonitor(ABC):
                 ).items()
             ],
             "Error information for last source batch retrieved": [
-                f"{ErrorCode(error_code)}: {count}"
+                f"{ErrorCode(error_code)}: {count}" if error_code else "N/A"
                 for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
                     last_source_batch_id
                 ).items()
@@ -199,7 +199,7 @@ class ExampleStatusMonitor(StatusMonitor):
         return StatusMonitor._validate_config(self)  # no additional config needed
 
 
-    def _format_status_info(self, status_info: dict):
+    def _format_status_info(self, status_info: dict) -> str:
         """ Format the basis status information as json
         Args:
         - status_info - the basic status information
@@ -238,7 +238,7 @@ class ExampleStatusMonitor(StatusMonitor):
     def monitor_status(self):
         """ Retrieves the status and error information and communicates this via the terminal
         """
-        status_info = self._check_status
+        status_info = self._check_status()
         error_report = self._get_detailed_status_report(status_info)
         formatted_status_info =  self._format_status_info(status_info)
         formatted_error_report = self._format_error_report(error_report)

@@ -142,3 +142,5 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 Use the [issue tracker](https://github.com/beeldengeluid/dane-workflows/issues) for any questions concerning this repository
 
 Project Link: https://github.com/beeldengeluid/dane-workflows
+
+Codemeta.json requirements: https://github.com/CLARIAH/clariah-plus/blob/main/requirements/software-metadata-requirements.md

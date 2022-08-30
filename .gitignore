@@ -11,3 +11,4 @@ dane_stats
 .pytest_cache
 .coverage
 .pypirc
+.mypy_cache
