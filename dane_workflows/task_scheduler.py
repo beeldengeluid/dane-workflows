@@ -216,7 +216,7 @@ class TaskScheduler(object):
         if self.BATCH_LIMIT >= 0:
             if proc_batch_id >= self.BATCH_LIMIT:
                 self.logger.info(
-                    f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stoped processing"
+                    f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stopped processing"
                 )
                 sys.exit()
         else:
