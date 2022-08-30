@@ -1,7 +1,8 @@
 config.yml
 dist
 *.json
-logs
+queries
+*.log*
 *.pyc
 __pycache__
 *.db
