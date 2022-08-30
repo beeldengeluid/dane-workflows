@@ -5,6 +5,7 @@ LOGGING:  # configures: dane_workflows.base_util
 TASK_SCHEDULER:  # configures: dane_workflows.task_scheduler
   BATCH_PREFIX: your_test  # used to track different iterations of DataProvider.get_next_batch
   BATCH_SIZE: 5  # number of items returned by DataProvider.get_next_batch
+  BATCH_LIMIT: -1 # limit of batches to process (-1 for no limit)
 DATA_PROVIDER:  # configures: ExampleDataProvider
   TYPE: ExampleDataProvider
   CONFIG: 
