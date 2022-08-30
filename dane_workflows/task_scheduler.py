@@ -105,9 +105,10 @@ class TaskScheduler(object):
             assert base_util.check_setting(
                 self.config["TASK_SCHEDULER"]["BATCH_PREFIX"], str
             ), "TASK_SCHEDULER.BATCH_PREFIX"
-            assert base_util.check_setting(
-                self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int
-            ), "TASK_SCHEDULER.BATCH_LIMIT"
+            if "BATCH_LIMIT" in self.config["TASK_SCHEDULER"]:
+                assert base_util.check_setting(
+                    self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int
+                ), "TASK_SCHEDULER.BATCH_LIMIT"
 
             base_util.validate_parent_dirs(parent_dirs_to_check)
         except AssertionError as e:
