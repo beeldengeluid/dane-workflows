@@ -39,8 +39,10 @@ class TaskScheduler(object):
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
         self.BATCH_PREFIX = config["TASK_SCHEDULER"][
             "BATCH_PREFIX"
-        ]  # to keep track of the batches
+        ]
+        # to keep track of the batches
 
+        self.BATCH_LIMIT = (config["TASK_SCHEDULER"]["BATCH_LIMIT"] if "BATH_LIMIT" in config["TASK_SCHEDULER"] else -1)  # to limit the amout of batches
         self.logger = base_util.init_logger(config)  # first init the logger
 
         # first initialize the status handler and pass it to the data provider and processing env
@@ -184,6 +186,14 @@ class TaskScheduler(object):
         )
         return self.data_provider.get_next_batch(proc_batch_id, batch_size)
 
+    def _check_batch_limit(self, proc_batch_id):
+        if self.BATCH_LIMIT >= 0:
+            if proc_batch_id >= self.BATCH_LIMIT:
+                self.logger.info(f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stoped processing")
+                sys.exit()
+        else:
+            pass
+
     # The proc_batch (list of StatusRow objects) is processed in 5 steps:
     #
     # 1. Register the batch in the ProcessingEnvironment
@@ -194,6 +204,9 @@ class TaskScheduler(object):
     def _run_proc_batch(
         self, status_rows: List[StatusRow], proc_batch_id: int, skip_steps: int = 0
     ) -> bool:
+        self.logger.info("Check the limit of batches to process")
+        self._check_batch_limit(proc_batch_id)
+
         self.logger.info(
             f"Processing proc_batch {proc_batch_id}, skipping {skip_steps} steps"
         )
