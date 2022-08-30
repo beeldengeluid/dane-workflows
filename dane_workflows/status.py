@@ -167,6 +167,10 @@ class StatusHandler(ABC):
         raise NotImplementedError("Requires implementation")
 
     @abstractmethod
+    def get_name_of_source_batch_id(self, source_batch_id: int) -> str:
+        raise NotImplementedError("Requires implementation")
+
+    @abstractmethod
     def get_status_counts(self) -> Optional[dict]:
         """Counts the number of rows with each status
         Returns:
@@ -193,9 +197,7 @@ class StatusHandler(ABC):
         raise NotImplementedError("Requires implementation")
 
     @abstractmethod
-    def get_error_code_counts_for_proc_batch_id(
-        self, proc_batch_id: int
-    ) -> Optional[dict]:
+    def get_error_code_counts_for_proc_batch_id(self, proc_batch_id: int) -> dict:
         """Counts the number of rows with each error code for the processing batch
         Args:
             - proc_batch_id - id of the processing batch for which the statuses are counted
@@ -217,9 +219,7 @@ class StatusHandler(ABC):
         raise NotImplementedError("Requires implementation")
 
     @abstractmethod
-    def get_error_code_counts_for_source_batch_id(
-        self, source_batch_id: int
-    ) -> Optional[dict]:
+    def get_error_code_counts_for_source_batch_id(self, source_batch_id: int) -> dict:
         """Counts the number of rows with each error code for the source batch
         Args:
             - source_batch_id - id of the source batch for which the statuses are counted
@@ -406,6 +406,9 @@ class ExampleStatusHandler(StatusHandler):
     def get_last_source_batch_id(self) -> int:
         return -1  # TODO implement
 
+    def get_name_of_source_batch_id(self, source_batch_id: int) -> str:
+        return "-1"  # TODO implement
+
     def get_status_counts(self) -> dict:
         return {}  # TODO implement
 
@@ -542,6 +545,18 @@ class SQLiteStatusHandler(StatusHandler):
             return self._get_single_int_from_db_rows(db_rows)
         return -1
 
+    def get_name_of_source_batch_id(self, source_batch_id: int) -> str:
+        conn = self._create_connection(self.DB_FILE)
+        with conn:
+            db_rows = self._run_select_query(
+                conn,
+                "SELECT source_batch_name FROM status_rows WHERE source_batch_id = ? "
+                "GROUP BY source_batch_name",
+                (source_batch_id,),
+            )
+            return self._get_single_str_from_db_rows(db_rows)
+        return -1
+
     def get_status_counts(self) -> Optional[dict]:
         """Counts the number of rows with each status
         Returns:
@@ -591,9 +606,7 @@ class SQLiteStatusHandler(StatusHandler):
             return self._get_groups_and_counts_from_db_rows(db_rows)
         return None
 
-    def get_error_code_counts_for_proc_batch_id(
-        self, proc_batch_id: int
-    ) -> Optional[dict]:
+    def get_error_code_counts_for_proc_batch_id(self, proc_batch_id: int) -> dict:
         """Counts the number of rows with each error code for the processing batch
         Args:
             - proc_batch_id - id of the processing batch for which the statuses are counted
@@ -610,7 +623,7 @@ class SQLiteStatusHandler(StatusHandler):
                 (proc_batch_id,),
             )
             return self._get_groups_and_counts_from_db_rows(db_rows)
-        return None
+        return {}
 
     def get_status_counts_for_source_batch_id(
         self, source_batch_id: int
@@ -632,9 +645,7 @@ class SQLiteStatusHandler(StatusHandler):
             return self._get_groups_and_counts_from_db_rows(db_rows)
         return None
 
-    def get_error_code_counts_for_source_batch_id(
-        self, source_batch_id: int
-    ) -> Optional[dict]:
+    def get_error_code_counts_for_source_batch_id(self, source_batch_id: int) -> dict:
         """Counts the number of rows with each error code for the source batch
         Args:
             - source_batch_id - id of the source batch for which the statuses are counted
@@ -651,7 +662,7 @@ class SQLiteStatusHandler(StatusHandler):
                 (source_batch_id,),
             )
             return self._get_groups_and_counts_from_db_rows(db_rows)
-        return None
+        return {}
 
     def get_status_counts_per_extra_info_value(self) -> Optional[dict]:
         """Counts the number of rows with each status for each extra_info value
@@ -718,7 +729,13 @@ class SQLiteStatusHandler(StatusHandler):
             return t_value[0] if t_value[0] is not None else -1
         return -1
 
-    def _get_groups_and_counts_from_db_rows(self, db_rows) -> Optional[dict]:
+    def _get_single_str_from_db_rows(self, db_rows):
+        if db_rows and type(db_rows) == list and len(db_rows) == 1:
+            t_value = db_rows[0]
+            return t_value[0] if t_value[0] is not None else "-1"
+        return "-1"
+
+    def _get_groups_and_counts_from_db_rows(self, db_rows) -> dict:
         """Processes the results of an aggregation for a group, e.g. COUNT and GROUP BY, to retrieve a single
         aggregated value for each group
         Returns:
@@ -730,7 +747,7 @@ class SQLiteStatusHandler(StatusHandler):
                 group_counts[db_row[0]] = db_row[1]
             return group_counts
         else:
-            return None
+            return {}
 
     def _get_nested_groups_and_counts_from_db_rows(self, db_rows) -> Optional[dict]:
         """Processes the results of a nested aggregation for a nested group with 2 levels,

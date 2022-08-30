@@ -1,9 +1,10 @@
+import time
+import os
 from os import sep
 import pytest
 
 from mockito import unstub, when, verify, spy2, ANY
 from test_util import new_batch
-from datetime import datetime
 from dane_workflows.status import (
     ExampleStatusHandler,
     SQLiteStatusHandler,
@@ -117,13 +118,14 @@ def test_update_status_rows_modification_date(config):
         # create some StatusRow objects, a default date_modified should be assigned
         # (see test__default_status_row_date_fields())
         status_rows = new_batch(0, ProcessingStatus.NEW, None, 5)
+        old_row_date_modified = status_rows[0].date_modified
+        time.sleep(3)  # sleep to ensure new date_modified will be later
 
         # after this function call, all rows should have a fresh date_modified
         updated_rows = status_handler._update_status_rows_modification_date(status_rows)
         for row in updated_rows:
-            td = datetime.now() - row.date_modified
-            assert td.total_seconds() <= 2
-            assert td.total_seconds() > 0
+            td = row.date_modified - old_row_date_modified
+            assert td.total_seconds() > 2
 
     finally:
         unstub()
@@ -207,9 +209,14 @@ def test_get_status_counts_for_proc_batch_id(
         config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
         # use a test folder to store the database so production database is not affected
-        config["STATUS_HANDLER"]["CONFIG"] = {
-            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-        }
+        if os.getcwd().endswith("unit_tests"):
+            config["STATUS_HANDLER"]["CONFIG"] = {
+                "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+            }
+        else:
+            config["STATUS_HANDLER"]["CONFIG"] = {
+                "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+            }
 
         status_handler = SQLiteStatusHandler(config)
 
@@ -316,9 +323,14 @@ def test_get_error_code_counts_for_proc_batch_id(
         config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
         # use a test folder to store the database so production database is not affected
-        config["STATUS_HANDLER"]["CONFIG"] = {
-            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-        }
+        if os.getcwd().endswith("unit_tests"):
+            config["STATUS_HANDLER"]["CONFIG"] = {
+                "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+            }
+        else:
+            config["STATUS_HANDLER"]["CONFIG"] = {
+                "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+            }
 
         status_handler = SQLiteStatusHandler(config)
 
@@ -425,9 +437,14 @@ def test_get_status_counts_for_source_batch_id(
         config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
         # use a test folder to store the database so production database is not affected
-        config["STATUS_HANDLER"]["CONFIG"] = {
-            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-        }
+        if os.getcwd().endswith("unit_tests"):
+            config["STATUS_HANDLER"]["CONFIG"] = {
+                "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+            }
+        else:
+            config["STATUS_HANDLER"]["CONFIG"] = {
+                "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+            }
 
         status_handler = SQLiteStatusHandler(config)
 
@@ -533,9 +550,14 @@ def test_get_error_code_counts_for_source_batch_id(
     config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
-    config["STATUS_HANDLER"]["CONFIG"] = {
-        "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-    }
+    if os.getcwd().endswith("unit_tests"):
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+        }
+    else:
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+        }
 
     status_handler = SQLiteStatusHandler(config)
 
@@ -632,10 +654,14 @@ def test_get_completed_semantic_source_batch_ids(
     config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
-    config["STATUS_HANDLER"]["CONFIG"] = {
-        "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-    }
-
+    if os.getcwd().endswith("unit_tests"):
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+        }
+    else:
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+        }
     status_handler = SQLiteStatusHandler(config)
 
     # clean up before the test
@@ -761,10 +787,14 @@ def test_get_status_counts(config, statuses, source_batch_ids, expected_status_c
     config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
-    config["STATUS_HANDLER"]["CONFIG"] = {
-        "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-    }
-
+    if os.getcwd().endswith("unit_tests"):
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+        }
+    else:
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+        }
     status_handler = SQLiteStatusHandler(config)
 
     # clean up before the test
@@ -880,9 +910,14 @@ def test_get_error_code_counts(
     config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
-    config["STATUS_HANDLER"]["CONFIG"] = {
-        "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-    }
+    if os.getcwd().endswith("unit_tests"):
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+        }
+    else:
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+        }
 
     status_handler = SQLiteStatusHandler(config)
 
@@ -981,10 +1016,14 @@ def test_get_status_counts_per_extra_info(
     config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
-    config["STATUS_HANDLER"]["CONFIG"] = {
-        "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
-    }
-
+    if os.getcwd().endswith("unit_tests"):
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["..", "proc_stats", "all_stats.db"])
+        }
+    else:
+        config["STATUS_HANDLER"]["CONFIG"] = {
+            "DB_FILE": sep.join(["proc_stats", "all_stats.db"])
+        }
     status_handler = SQLiteStatusHandler(config)
 
     # clean up before the test

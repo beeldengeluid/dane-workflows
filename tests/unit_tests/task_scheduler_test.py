@@ -56,7 +56,7 @@ def test_validate_config(config, error):
                 ExampleDataProvider,
                 ExampleDataProcessingEnvironment,
                 ExampleExporter,
-                True,
+                unit_test=True,
             )
     else:
         try:
@@ -70,7 +70,7 @@ def test_validate_config(config, error):
                 ExampleDataProvider,
                 ExampleDataProcessingEnvironment,
                 ExampleExporter,
-                True,
+                unit_test=True,
             )
 
             verify(dane_workflows.util.base_util, times=1).check_log_level(ANY)
@@ -110,7 +110,7 @@ def test_register_proc_batch(
             ExampleDataProvider,
             ExampleDataProcessingEnvironment,
             ExampleExporter,
-            True,
+            unit_test=True,
         )
 
         assert ts._register_proc_batch(proc_batch_id, proc_batch) == success
@@ -148,7 +148,7 @@ def test_process_proc_batch(config, proc_batch_id, proc_env_success, success):
             ExampleDataProvider,
             ExampleDataProcessingEnvironment,
             ExampleExporter,
-            True,
+            unit_test=True,
         )
 
         assert ts._process_proc_batch(proc_batch_id) == success

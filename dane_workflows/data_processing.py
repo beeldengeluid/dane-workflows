@@ -30,7 +30,19 @@ class ProcessingResult:
 
 """
 This class is owned by a TaskScheduler to feed a batch of data (obtained from a DataProvider)
-to an (external) data processing environment, such as DANE
+to an (external) data processing environment, such as DANE.
+
+Important NOTE: for processing only a list of StatusRow objects are provided, which do only contain:
+- target_id, i.e. ID of input document
+- target_url, i.e. URL of content related to input document (could point to metadata)
+- source_extra_info, i.e. variable text
+
+If the actual processing environment requires textual input data, either:
+- use the target_url to point to a metadata record or text resource
+- call the DataProvider to fetch the textual records (TODO provide access to DataProvider in this class)
+    - the DataProvider could e.g. fetch the required metadata:
+        - from local storage OR simply fetch it from the source catalogue
+        - as part of the StatusRow (TODO not implemented yet)
 """
 
 
