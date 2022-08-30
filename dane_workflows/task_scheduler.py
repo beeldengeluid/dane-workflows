@@ -60,6 +60,7 @@ class TaskScheduler(object):
         )  # instantiate the DataProcessingEnvironment
         self.exporter = exporter(config, self.status_handler, unit_test)
 
+        self.status_monitor = None
         if status_monitor:
             self.status_monitor = status_monitor(
                 config, self.status_handler
