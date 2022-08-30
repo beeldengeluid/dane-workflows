@@ -1,4 +1,5 @@
 import os
+import sys
 import pytest
 from mockito import when, verify, spy2, ANY, unstub
 from dane_workflows.task_scheduler import TaskScheduler
@@ -12,6 +13,7 @@ from dane_workflows.status import (
     ExampleStatusHandler,
     ProcessingStatus,
 )
+from dane_workflows.status_monitor import ExampleStatusMonitor
 from test_util import new_batch, LoggerMock
 
 
@@ -73,7 +75,7 @@ def test_validate_config(config, error):
             )
 
             verify(dane_workflows.util.base_util, times=1).check_log_level(ANY)
-            verify(dane_workflows.util.base_util, times=4).check_setting(ANY, ANY)
+            verify(dane_workflows.util.base_util, times=5).check_setting(ANY, ANY)
             verify(dane_workflows.util.base_util, times=1).validate_parent_dirs(ANY)
         finally:
             unstub()
@@ -154,3 +156,35 @@ def test_process_proc_batch(config, proc_batch_id, proc_env_success, success):
         verify(ExampleDataProcessingEnvironment, times=1).process_batch(proc_batch_id)
         verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
         verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)
+
+
+@pytest.mark.parametrize(
+    ("batch_limit", "proc_batch_id", "sys_exit"),
+    [
+        (-1, 0, 0),
+        (-1, 5, 0),
+        (0, 0, 1),
+        (0, 5, 1),
+        (1, 0, 0),
+        (1, 1, 1),
+        (5, 0, 0),
+        (5, 4, 0),
+        (5, 5, 1),
+        (5, 6, 1),
+    ],
+)
+def test_check_batch_limit(config, proc_batch_id, batch_limit, sys_exit):
+
+    ts = TaskScheduler(
+        config,
+        ExampleStatusHandler,
+        ExampleDataProvider,
+        ExampleDataProcessingEnvironment,
+        ExampleExporter,
+        ExampleStatusMonitor,
+        unit_test=True,
+    )
+    ts.BATCH_LIMIT = batch_limit
+    with when(sys).exit().thenReturn():
+        ts._check_batch_limit(proc_batch_id)
+        verify(sys, times=sys_exit).exit()

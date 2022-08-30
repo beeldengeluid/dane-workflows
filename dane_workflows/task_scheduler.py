@@ -40,9 +40,15 @@ class TaskScheduler(object):
             sys.exit()
 
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
-        self.BATCH_PREFIX = config["TASK_SCHEDULER"][
-            "BATCH_PREFIX"
-        ]  # to keep track of the batches
+        self.BATCH_PREFIX = config["TASK_SCHEDULER"]["BATCH_PREFIX"]
+
+        self.BATCH_LIMIT = (
+            config["TASK_SCHEDULER"]["BATCH_LIMIT"]
+            if "BATCH_LIMIT" in config["TASK_SCHEDULER"]
+            else -1
+        )  # to limit the amout of batches
+
+        # to keep track of the batches
         self.MONITOR_FREQ = (
             config["TASK_SCHEDULER"]["MONITOR_FREQ"]
             if "MONITOR_FREQ" in config["TASK_SCHEDULER"]
@@ -99,6 +105,10 @@ class TaskScheduler(object):
             assert base_util.check_setting(
                 self.config["TASK_SCHEDULER"]["BATCH_PREFIX"], str
             ), "TASK_SCHEDULER.BATCH_PREFIX"
+            if "BATCH_LIMIT" in self.config["TASK_SCHEDULER"]:
+                assert base_util.check_setting(
+                    self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int
+                ), "TASK_SCHEDULER.BATCH_LIMIT"
 
             base_util.validate_parent_dirs(parent_dirs_to_check)
         except AssertionError as e:
@@ -202,6 +212,16 @@ class TaskScheduler(object):
         )
         return self.data_provider.get_next_batch(proc_batch_id, batch_size)
 
+    def _check_batch_limit(self, proc_batch_id):
+        if self.BATCH_LIMIT >= 0:
+            if proc_batch_id >= self.BATCH_LIMIT:
+                self.logger.info(
+                    f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stopped processing"
+                )
+                sys.exit()
+        else:
+            pass
+
     # The proc_batch (list of StatusRow objects) is processed in 5 steps:
     #
     # 1. Register the batch in the ProcessingEnvironment
@@ -212,6 +232,9 @@ class TaskScheduler(object):
     def _run_proc_batch(
         self, status_rows: List[StatusRow], proc_batch_id: int, skip_steps: int = 0
     ) -> bool:
+        self.logger.info("Check the limit of batches to process")
+        self._check_batch_limit(proc_batch_id)
+
         self.logger.info(
             f"Processing proc_batch {proc_batch_id}, skipping {skip_steps} steps"
         )
