@@ -40,10 +40,13 @@ class TaskScheduler(object):
             sys.exit()
 
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
-        self.BATCH_PREFIX = config["TASK_SCHEDULER"][
-            "BATCH_PREFIX"]
-        
-        self.BATCH_LIMIT = (config["TASK_SCHEDULER"]["BATCH_LIMIT"] if "BATCH_LIMIT" in config["TASK_SCHEDULER"] else -1)  # to limit the amout of batches
+        self.BATCH_PREFIX = config["TASK_SCHEDULER"]["BATCH_PREFIX"]
+
+        self.BATCH_LIMIT = (
+            config["TASK_SCHEDULER"]["BATCH_LIMIT"]
+            if "BATCH_LIMIT" in config["TASK_SCHEDULER"]
+            else -1
+        )  # to limit the amout of batches
 
         # to keep track of the batches
         self.MONITOR_FREQ = (
@@ -103,7 +106,7 @@ class TaskScheduler(object):
                 self.config["TASK_SCHEDULER"]["BATCH_PREFIX"], str
             ), "TASK_SCHEDULER.BATCH_PREFIX"
             assert base_util.check_setting(
-               self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int 
+                self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int
             ), "TASK_SCHEDULER.BATCH_LIMIT"
 
             base_util.validate_parent_dirs(parent_dirs_to_check)
@@ -211,7 +214,9 @@ class TaskScheduler(object):
     def _check_batch_limit(self, proc_batch_id):
         if self.BATCH_LIMIT >= 0:
             if proc_batch_id >= self.BATCH_LIMIT:
-                self.logger.info(f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stoped processing")
+                self.logger.info(
+                    f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stoped processing"
+                )
                 sys.exit()
         else:
             pass
