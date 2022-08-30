@@ -1,12 +1,14 @@
 config.yml
 dist
+*.json
 queries
 *.log*
 *.pyc
 __pycache__
-proc_stats
+*.db
 dane_stats
 .idea*
 .pytest_cache
 .coverage
 .pypirc
+.mypy_cache

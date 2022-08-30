@@ -13,7 +13,9 @@ EXPORTER:
   TYPE: ExampleExporter
 STATUS_HANDLER:
   TYPE: ExampleStatusHandler
+STATUS_MONITOR:  # optional, for monitoring 
+  TYPE: ExampleStatusMonitor
+  CONFIG:
+    INCLUDE_EXTRA_INFO: False
 PROC_ENV:
   TYPE: ExampleDataProcessingEnvironment
-EXPORTER:
-  TYPE: ExampleExporter
