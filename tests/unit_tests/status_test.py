@@ -5,7 +5,6 @@ import pytest
 
 from mockito import unstub, when, verify, spy2, ANY
 from test_util import new_batch
-from datetime import datetime
 from dane_workflows.status import (
     ExampleStatusHandler,
     SQLiteStatusHandler,

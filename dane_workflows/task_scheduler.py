@@ -30,7 +30,7 @@ class TaskScheduler(object):
         data_provider: Type[DataProvider],
         data_processing_env: Type[DataProcessingEnvironment],
         exporter: Type[Exporter],
-        status_monitor: Type[StatusMonitor]=None,
+        status_monitor: Type[StatusMonitor] = None,
         unit_test: bool = False,
     ):
         self.config = config
@@ -43,7 +43,11 @@ class TaskScheduler(object):
         self.BATCH_PREFIX = config["TASK_SCHEDULER"][
             "BATCH_PREFIX"
         ]  # to keep track of the batches
-        self.MONITOR_FREQ = config["TASK_SCHEDULER"]["MONITOR_FREQ"] if "MONITOR_FREQ" in config["TASK_SCHEDULER"] else -1 # optional monitoring frequency
+        self.MONITOR_FREQ = (
+            config["TASK_SCHEDULER"]["MONITOR_FREQ"]
+            if "MONITOR_FREQ" in config["TASK_SCHEDULER"]
+            else -1
+        )  # optional monitoring frequency
         self.logger = base_util.init_logger(config)  # first init the logger
 
         # first initialize the status handler and pass it to the data provider and processing env
@@ -55,10 +59,11 @@ class TaskScheduler(object):
             config, self.status_handler, unit_test
         )  # instantiate the DataProcessingEnvironment
         self.exporter = exporter(config, self.status_handler, unit_test)
-        
+
         if status_monitor:
-            self.status_monitor = status_monitor(config, self.status_handler)  # optional monitoring
-        
+            self.status_monitor = status_monitor(
+                config, self.status_handler
+            )  # optional monitoring
 
     def _validate_config(self):
         parent_dirs_to_check = []
@@ -172,7 +177,7 @@ class TaskScheduler(object):
             if status_rows is None:
                 self.logger.info("No source_batch remaining, all done, quitting...")
                 break
-                
+
             # now that we have a new proc_batch, pass it on to the ProcessingEnvironment
             # and eventually the Exporter
             if self._run_proc_batch(status_rows, proc_batch_id) is False:
@@ -333,7 +338,7 @@ if __name__ == "__main__":
         ExampleDataProvider,
         ExampleDataProcessingEnvironment,
         ExampleExporter,
-        ExampleStatusMonitor
+        ExampleStatusMonitor,
     )
 
     ts.run()
