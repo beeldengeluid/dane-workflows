@@ -42,7 +42,7 @@ class TaskScheduler(object):
         ]
         # to keep track of the batches
 
-        self.BATCH_LIMIT = (config["TASK_SCHEDULER"]["BATCH_LIMIT"] if "BATH_LIMIT" in config["TASK_SCHEDULER"] else -1)  # to limit the amout of batches
+        self.BATCH_LIMIT = (config["TASK_SCHEDULER"]["BATCH_LIMIT"] if "BATCH_LIMIT" in config["TASK_SCHEDULER"] else -1)  # to limit the amout of batches
         self.logger = base_util.init_logger(config)  # first init the logger
 
         # first initialize the status handler and pass it to the data provider and processing env
@@ -88,6 +88,9 @@ class TaskScheduler(object):
             assert base_util.check_setting(
                 self.config["TASK_SCHEDULER"]["BATCH_PREFIX"], str
             ), "TASK_SCHEDULER.BATCH_PREFIX"
+            assert base_util.check_setting(
+               self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int 
+            ), "TASK_SCHEDULER.BATCH_LIMIT"
 
             base_util.validate_parent_dirs(parent_dirs_to_check)
         except AssertionError as e:
