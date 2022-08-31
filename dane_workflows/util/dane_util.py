@@ -26,6 +26,14 @@ class TaskType(Enum):
     FINGERPRINT = "FINGERPRINT"  # Fingerprint extraction
 
 
+@unique
+class TaskState(Enum):
+    QUEUED = "102"  # means the task is queued (waiting for a worker to be freed up)
+    CREATED = "201"  # means the task was just created (before being queued)
+    SUCCESS = "200"  # means the task was successfully finished
+    ERROR = "500"  # means the task failed
+
+
 @dataclass
 class Task:
     id: str  # es_hit["_id"],
@@ -480,24 +488,21 @@ class DANEHandler:
         self.logger.debug(json.dumps(status_overview, indent=4, sort_keys=True))
 
     def _log_status_of_dane_task(self, status_overview, dane_task: TaskType):
-        self.logger.debug("Entering function")
+        self.logger.debug(
+            f"Showing all processing states for current DANE batch for all tasks of type: {dane_task.value}"
+        )
         states = status_overview.get(dane_task.value, {}).get("states", {})
-        c_done = 0
-        c_queued = 0
-        c_problems = 0
+        c_unknown = 0
         for state in states.keys():
             state_count = len(states[state].get("tasks", []))
-            self.logger.info("# {} tasks: {}".format(state, state_count))
-            if state == "200":
-                c_done += state_count
-            elif state == "102":
-                c_queued += state_count
-            else:
-                c_problems += state_count
+            try:
+                ts = TaskState(state)
+                self.logger.info(f"Number of {ts.name} tasks: {state_count}")
+            except ValueError:
+                self.logger.info(f"Found an unmapped DANE status code: {state}")
+                c_unknown += state_count
 
-        self.logger.info("# tasks done: {}".format(c_done))
-        self.logger.info("# tasks queued: {}".format(c_queued))
-        self.logger.info("# tasks with some kind of problem: {}".format(c_problems))
+        self.logger.info(f"Number of UNKNOWN tasks: {c_unknown}")
 
     def _to_dane_docs(self, status_rows: List[StatusRow]) -> Optional[List[dict]]:
         self.logger.debug("Entering function")
