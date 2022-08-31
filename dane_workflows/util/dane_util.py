@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import requests
 from time import sleep
@@ -282,7 +283,13 @@ class DANEHandler:
             except json.JSONDecodeError:
                 self.logger.exception("Invalid JSON returned by DANE (register docs)")
                 return None
-            self._persist_registered_batch(proc_batch_id, json_data)
+            # if it cannot be persisted. Quit, because the program state will be corrupt
+            if not self._persist_registered_batch(proc_batch_id, json_data):
+                dane_batch_fn = self._get_batch_file_name(proc_batch_id)
+                self.logger.critical(
+                    f"Could not persist DANE response to : {dane_batch_fn}"
+                )
+                sys.exit()
             return self._to_updated_status_rows(batch, json_data)
         return None
 
@@ -338,8 +345,7 @@ class DANEHandler:
         return Document.from_json(doc) if doc and doc.get("_id") is not None else None
 
     def _persist_registered_batch(self, proc_batch_id: int, dane_resp: dict) -> bool:
-        self.logger.debug("Entering function")
-        self.logger.debug("Persisting DANE status")
+        self.logger.debug("Persisting DANE API response to disk")
         self.logger.debug(dane_resp)
         try:
             with open(self._get_batch_file_name(proc_batch_id), "w") as f:
