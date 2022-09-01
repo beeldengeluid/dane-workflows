@@ -69,6 +69,8 @@ class DANEHandler:
         self.STATUS_DIR = config["DANE_STATUS_DIR"]
         self.MONITOR_INTERVAL = config["DANE_MONITOR_INTERVAL"]
 
+        self.BATCH_PREFIX = config["DANE_BATCH_PREFIX"]
+
         # TODO implement new endpoint in DANE-server API to avoid calling ES directly
         self.DANE_ES = Elasticsearch(
             host=config["DANE_ES_HOST"],
@@ -79,14 +81,14 @@ class DANEHandler:
 
     def _get_batch_file_name(self, proc_batch_id: int) -> str:
         self.logger.debug("Entering function")
-        return os.path.join(self.STATUS_DIR, f"{proc_batch_id}-batch.json")
+        return os.path.join(self.STATUS_DIR, f"{self._get_proc_batch_name(proc_batch_id)}.json")
 
     def _load_batch_file(self, proc_batch_id) -> Optional[dict]:
         self.logger.debug("Entering function")
         try:
             return json.load(open(self._get_batch_file_name(proc_batch_id)))
         except Exception:
-            self.logger.exception(f"Could not load {proc_batch_id}-batch.json")
+            self.logger.exception(f"Could not load {self._get_proc_batch_name(proc_batch_id)}.json")
             return None
 
     # use to feed _add_tasks_to_batch()
@@ -119,7 +121,7 @@ class DANEHandler:
                     {
                         "query_string": {
                             "default_field": "creator.id",
-                            "query": '"{}"'.format(proc_batch_id),
+                            "query": '"{}"'.format(self._get_proc_batch_name(proc_batch_id)),
                         }
                     }
                 ]
@@ -179,7 +181,7 @@ class DANEHandler:
     ) -> List[Task]:
         self.logger.debug("Entering function")
         self.logger.info(
-            f"Fetching tasks of proc_batch {proc_batch_id} from DANE index"
+            f"Fetching tasks of proc_batch {self._get_proc_batch_name(proc_batch_id)} with prefix from DANE index"
         )
         query = self._generate_tasks_of_batch_query(proc_batch_id, offset, size)
         self.logger.debug(json.dumps(query, indent=4, sort_keys=True))
@@ -193,7 +195,7 @@ class DANEHandler:
         else:
             for hit in result["hits"]["hits"]:
                 all_tasks.append(self._to_task(hit))
-            self.logger.debug(f"Done fetching all tasks for batch {proc_batch_id}")
+            self.logger.debug(f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}")
             return self.get_tasks_of_batch(
                 proc_batch_id, all_tasks, offset + size, size
             )
@@ -203,7 +205,7 @@ class DANEHandler:
     ) -> List[Result]:
         self.logger.debug("Entering function")
         self.logger.debug(
-            f"Fetching results of proc_batch: {proc_batch_id} from DANE index"
+            f"Fetching results of proc_batch: {self._get_proc_batch_name(proc_batch_id)} from DANE index"
         )
         query = self._generate_results_of_batch_query(proc_batch_id, offset, size)
         self.logger.debug(json.dumps(query, indent=4, sort_keys=True))
@@ -217,7 +219,7 @@ class DANEHandler:
         else:
             for hit in result["hits"]["hits"]:
                 all_results.append(self._to_result(hit))
-            self.logger.debug(f"Done fetching all tasks for batch {proc_batch_id}")
+            self.logger.debug(f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}")
             return self.get_results_of_batch(
                 proc_batch_id, all_results, offset + size, size
             )
@@ -516,7 +518,12 @@ class DANEHandler:
                     "url": sr.target_url,
                     "type": "Video",
                 },
-                {"id": sr.proc_batch_id, "type": "Organization"},
+                {"id": self._get_proc_batch_name(sr.proc_batch_id), "type": "Organization"},
             ).to_json()
             for sr in status_rows
         ]
+    
+    def _get_proc_batch_name(self, proc_batch_id):
+        return f"{self.BATCH_PREFIX}_{proc_batch_id}"
+
+

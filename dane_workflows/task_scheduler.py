@@ -40,7 +40,6 @@ class TaskScheduler(object):
             sys.exit()
 
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
-        self.BATCH_PREFIX = config["TASK_SCHEDULER"]["BATCH_PREFIX"]
 
         self.BATCH_LIMIT = (
             config["TASK_SCHEDULER"]["BATCH_LIMIT"]
@@ -96,15 +95,12 @@ class TaskScheduler(object):
             assert all(
                 [
                     x in self.config["TASK_SCHEDULER"]
-                    for x in ["BATCH_SIZE", "BATCH_PREFIX"]
+                    for x in ["BATCH_SIZE"]
                 ]
             ), "TASK_SCHEDULER.keys"
             assert base_util.check_setting(
                 self.config["TASK_SCHEDULER"]["BATCH_SIZE"], int
             ), "TASK_SCHEDULER.BATCH_SIZE"
-            assert base_util.check_setting(
-                self.config["TASK_SCHEDULER"]["BATCH_PREFIX"], str
-            ), "TASK_SCHEDULER.BATCH_PREFIX"
             if "BATCH_LIMIT" in self.config["TASK_SCHEDULER"]:
                 assert base_util.check_setting(
                     self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int

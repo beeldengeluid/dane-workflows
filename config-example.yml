@@ -3,7 +3,6 @@ LOGGING:  # configures: dane_workflows.base_util
   LEVEL: DEBUG
   DIR: logs  # where to store log files
 TASK_SCHEDULER:  # configures: dane_workflows.task_scheduler
-  BATCH_PREFIX: your_test  # used to track different iterations of DataProvider.get_next_batch
   BATCH_SIZE: 5  # number of items returned by DataProvider.get_next_batch
   BATCH_LIMIT: -1 # limit of batches to process (-1 for no limit)
   MONITOR_FREQ: -1  # after each n batches call the STATUS_MONITOR
@@ -40,5 +39,7 @@ PROC_ENV:  # to connect to a DANE environment, set TYPE to DANEEnvironment and p
   #   DANE_ES_PORT: 1234
   #   DANE_ES_INDEX: 'dane-index-your-env'
   #   DANE_ES_QUERY_TIMEOUT: 20 #seconds?
+  #   DANE_BATCH_PREFIX: your_test  # used to track different batches
+
 EXPORTER:  # implement your own Exporter by subclassing from Exporter
   TYPE: ExampleExporter
