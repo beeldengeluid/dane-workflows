@@ -27,7 +27,6 @@ from test_util import new_batch, LoggerMock
         "no_log_level",
         "no_ts_config",
         "no_ts_batch_size",
-        "no_ts_batch_prefix",
         "bad_logging_dir",
     ],
 )
@@ -44,8 +43,6 @@ def test_validate_config(config, error):
         del config["TASK_SCHEDULER"]
     elif error == "no_ts_batch_size":
         del config["TASK_SCHEDULER"]["BATCH_SIZE"]
-    elif error == "no_ts_batch_prefix":
-        del config["TASK_SCHEDULER"]["BATCH_PREFIX"]
     elif error == "bad_logging_dir":
         config["LOGGING"]["DIR"] = os.sep.join([os.getcwd(), "nonsense", "logging"])
 
@@ -75,7 +72,7 @@ def test_validate_config(config, error):
             )
 
             verify(dane_workflows.util.base_util, times=1).check_log_level(ANY)
-            verify(dane_workflows.util.base_util, times=5).check_setting(ANY, ANY)
+            verify(dane_workflows.util.base_util, times=4).check_setting(ANY, ANY)
             verify(dane_workflows.util.base_util, times=1).validate_parent_dirs(ANY)
         finally:
             unstub()
