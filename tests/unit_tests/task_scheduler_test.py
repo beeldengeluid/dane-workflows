@@ -44,8 +44,6 @@ def test_validate_config(config, error):
         del config["TASK_SCHEDULER"]
     elif error == "no_ts_batch_size":
         del config["TASK_SCHEDULER"]["BATCH_SIZE"]
-    elif error == "no_ts_batch_prefix":
-        del config["TASK_SCHEDULER"]["BATCH_PREFIX"]
     elif error == "bad_logging_dir":
         config["LOGGING"]["DIR"] = os.sep.join([os.getcwd(), "nonsense", "logging"])
 
