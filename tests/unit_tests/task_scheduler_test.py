@@ -72,7 +72,7 @@ def test_validate_config(config, error):
             )
 
             verify(dane_workflows.util.base_util, times=1).check_log_level(ANY)
-            verify(dane_workflows.util.base_util, times=5).check_setting(ANY, ANY)
+            verify(dane_workflows.util.base_util, times=4).check_setting(ANY, ANY)
             verify(dane_workflows.util.base_util, times=1).validate_parent_dirs(ANY)
         finally:
             unstub()
