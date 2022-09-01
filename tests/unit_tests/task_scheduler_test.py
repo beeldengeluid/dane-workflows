@@ -27,7 +27,6 @@ from test_util import new_batch, LoggerMock
         "no_log_level",
         "no_ts_config",
         "no_ts_batch_size",
-        "no_ts_batch_prefix",
         "bad_logging_dir",
     ],
 )
