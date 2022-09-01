@@ -88,8 +88,9 @@ class DANEHandler:
         self.DANE_ES_QUERY_TIMEOUT = config["DANE_ES_QUERY_TIMEOUT"]
 
     def _get_batch_file_name(self, proc_batch_id: int) -> str:
-        self.logger.debug("Entering function")
-        return os.path.join(self.STATUS_DIR, f"{self._get_proc_batch_name(proc_batch_id)}.json")
+        fn = os.path.join(self.STATUS_DIR, f"{self._get_proc_batch_name(proc_batch_id)}.json")
+        self.logger.debug(f"{proc_batch_id} --> filename: {fn}")
+        return fn
 
     def _load_batch_file(self, proc_batch_id) -> Optional[dict]:
         self.logger.debug("Entering function")
@@ -101,7 +102,9 @@ class DANEHandler:
 
     # use to feed _add_tasks_to_batch()
     def _get_doc_ids_of_batch(self, proc_batch_id: int) -> Optional[List[str]]:
-        self.logger.debug("Entering function")
+        self.logger.debug(
+            f"Get DANE doc IDs for proc_batch: {self._get_proc_batch_name(proc_batch_id)}"
+        )
         batch_data = self._load_batch_file(proc_batch_id)
         if batch_data is None:
             return None
@@ -188,7 +191,7 @@ class DANEHandler:
         self, proc_batch_id: int, all_tasks: List[Task], offset=0, size=200
     ) -> List[Task]:
         self.logger.info(
-            f"Fetching tasks of proc_batch {self._get_proc_batch_name(proc_batch_id)} with prefix from DANE index"
+            f"Fetching tasks of proc_batch: {self._get_proc_batch_name(proc_batch_id)} from DANE index"
         )
         query = self._generate_tasks_of_batch_query(proc_batch_id, offset, size)
         self.logger.debug(json.dumps(query, indent=4, sort_keys=True))
@@ -365,12 +368,12 @@ class DANEHandler:
 
     # called by DANEProcessingEnvironment.process_batch()
     def process_batch(self, proc_batch_id: int) -> Tuple[bool, int, str]:
-        self.logger.debug("Entering function")
         task_type = TaskType(self.DANE_TASK_ID)
         self.logger.debug(
             f"going to submit {task_type.value} for the following doc IDs"
         )
         doc_ids = self._get_doc_ids_of_batch(proc_batch_id)
+        self.logger.debug(doc_ids)
         if doc_ids is None:
             return (
                 False,
@@ -381,6 +384,8 @@ class DANEHandler:
             "document_id": doc_ids,
             "key": task_type.value,  # e.g. ASR, DOWNLOAD
         }
+        self.logger.debug(f"Submitting the following to {self.DANE_TASK_ENDPOINT}")
+        self.logger.debug(json.dumps(task))
         r = requests.post(self.DANE_TASK_ENDPOINT, data=json.dumps(task))
         return (
             r.status_code == 200,
@@ -390,7 +395,8 @@ class DANEHandler:
 
     # TODO avoid persisting this JSON response in StatusRow.proc_status_msg
     def __parse_dane_process_response(self, resp_data: str) -> str:
-        self.logger.debug("Entering function")
+        self.logger.debug("Parsing DANE response (TODO)")
+        self.logger.debug(resp_data)
         """
         {
             "success": [],
@@ -402,6 +408,22 @@ class DANEHandler:
                 {
                     "document_id": "7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c",
                     "error": "Task `BG_DOWNLOAD` already assigned to document `7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c`"
+                }
+            ]
+        }
+
+        OF
+
+        {
+            "success": [],
+            "failed": [
+                {
+                    "document_id": "8836ececa6242d1033480cb4f749da752fdcf26d",
+                    "error": "[404] 'No document with id `d035d6e713a151f3d94ce41a780068769f31bd11` found'"
+                },
+                {
+                    "document_id": "d035d6e713a151f3d94ce41a780068769f31bd11",
+                    "error": "[404] 'No document with id `d035d6e713a151f3d94ce41a780068769f31bd11` found'"
                 }
             ]
         }
