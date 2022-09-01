@@ -185,7 +185,6 @@ class DANEHandler:
     def get_tasks_of_batch(
         self, proc_batch_id: int, all_tasks: List[Task], offset=0, size=200
     ) -> List[Task]:
-        self.logger.debug("Entering function")
         self.logger.info(
             f"Fetching tasks of proc_batch {proc_batch_id} from DANE index"
         )
@@ -342,7 +341,6 @@ class DANEHandler:
     # converts JSON data (part of DANE API response) into DANE Documents
     # TODO make sure to fix irregular JSON data in DANE core library
     def __to_dane_doc(self, json_data: dict) -> Optional[Document]:
-        self.logger.debug("Entering function")
         self.logger.debug(f"Converting JSON to DANE Document {json_data}")
         if json_data is None:
             self.logger.warning("No json_data supplied")
@@ -409,12 +407,13 @@ class DANEHandler:
         return resp_data
 
     # returns a list of DANE Tasks when done
+    # TODO now only the "leaf" task type is monitored (e.g. ASR)
+    # the other tasks are ignored
     def monitor_batch(self, proc_batch_id: int, verbose=False) -> List[Task]:
-        self.logger.debug("Entering function")
-        self.logger.debug(f"\t\tMONITORING BATCH: {proc_batch_id}")
+        self.logger.debug(f"\t\tMonitoring DANE batch: {proc_batch_id}")
         tasks_of_batch = self.get_tasks_of_batch(proc_batch_id, [])
-        task_type = TaskType(self.DANE_TASK_ID)  # TODO earlier on this was a list
-        self.logger.debug(f"FOUND {len(tasks_of_batch)} TASKS, MONITORING NOW")
+        task_type = TaskType(self.DANE_TASK_ID)
+        self.logger.debug(f"Found {len(tasks_of_batch)} tasks")
         self.logger.debug("*" * 50)
 
         # log the raw JSON status of ALL tasks (verbose only)
@@ -424,7 +423,7 @@ class DANEHandler:
 
         # log a status overview per (type of) dane_task (e.g. ASR, DOWNLOAD, etc)
         self.logger.debug(f"Reporting on the {task_type.value} task")
-        self._log_status_of_dane_task(status_overview, task_type)
+        self._log_status_of_dane_task_type(status_overview, task_type)
 
         # TODO report and work on the dictionary with statusses to return
         self.logger.debug(f"Waiting for {self.MONITOR_INTERVAL} seconds")
@@ -487,7 +486,7 @@ class DANEHandler:
         self.logger.debug("Entering function")
         self.logger.debug(json.dumps(status_overview, indent=4, sort_keys=True))
 
-    def _log_status_of_dane_task(self, status_overview, dane_task: TaskType):
+    def _log_status_of_dane_task_type(self, status_overview, dane_task: TaskType):
         self.logger.debug(
             f"Showing all processing states for current DANE batch for all tasks of type: {dane_task.value}"
         )

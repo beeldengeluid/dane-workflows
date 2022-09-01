@@ -9,7 +9,7 @@ from dane_workflows.util.base_util import (
     validate_file_paths,
 )
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus, ErrorCode
-from dane_workflows.util.dane_util import DANEHandler, Task, Result
+from dane_workflows.util.dane_util import DANEHandler, Task, Result, TaskType
 from time import sleep
 from dataclasses import dataclass
 
@@ -189,6 +189,12 @@ class DANEEnvironment(DataProcessingEnvironment):
             assert check_setting(
                 self.config["DANE_TASK_ID"], str
             ), "DANEEnvironment.DANE_TASK_ID"
+            try:
+                TaskType(self.config["DANE_TASK_ID"])
+            except ValueError:
+                raise AssertionError(
+                    "DANEEnvironment.DANE_TASK_ID: use a valid instance of dane_util.TaskType"
+                )
             assert check_setting(
                 self.config["DANE_HOST"], str
             ), "DANEEnvironment.DANE_HOST"
