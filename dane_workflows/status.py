@@ -12,7 +12,7 @@ from dane_workflows.util.base_util import (
 )
 import sqlite3
 from datetime import datetime
-from sqlite3 import Error
+from sqlite3 import Error  # superclass of all sqlite3 Exceptions
 
 """
 Represents whether the DANE processing of a resource was successful or not
@@ -493,8 +493,10 @@ class SQLiteStatusHandler(StatusHandler):
         conn = self._create_connection(self.DB_FILE)
         with conn:
             for row in status_rows:
-                self._save_status_row(conn, row)
-            return True
+                saved = self._save_status_row(conn, row) is not None
+                if not saved:
+                    return False
+            return True  # only success if all rows were saved
         return False
 
     def get_status_rows_of_proc_batch(
@@ -813,13 +815,6 @@ class SQLiteStatusHandler(StatusHandler):
             PRIMARY KEY (target_id, target_url)
         );"""
 
-    def _left_shift_tuple(self, tup, n):
-        try:
-            n = n % len(tup)
-        except ZeroDivisionError:
-            return tuple()
-        return tup[n:] + tup[0:n]
-
     def _to_sqlite_date(self, dt: datetime) -> str:
         return dt.strftime("%Y-%m-%d %H:%M:%S.%f")[0:-3]
 
@@ -883,10 +878,14 @@ class SQLiteStatusHandler(StatusHandler):
             )
             VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
         """
-        cur = conn.cursor()
-        cur.execute(sql, row_tuple)
-        conn.commit()
-        return cur.lastrowid
+        try:
+            cur = conn.cursor()
+            cur.execute(sql, row_tuple)
+            conn.commit()
+            return cur.lastrowid
+        except Error:  # TODO check if this prints a meaningful sqlite3 error message
+            self.logger.exception("Could not save status row")
+        return None
 
     def _run_select_query(self, conn, query, params):
         self.logger.debug(query)
