@@ -93,10 +93,7 @@ class TaskScheduler(object):
             # check settings for this class
             assert "TASK_SCHEDULER" in self.config, "TASK_SCHEDULER"
             assert all(
-                [
-                    x in self.config["TASK_SCHEDULER"]
-                    for x in ["BATCH_SIZE"]
-                ]
+                [x in self.config["TASK_SCHEDULER"] for x in ["BATCH_SIZE"]]
             ), "TASK_SCHEDULER.keys"
             assert base_util.check_setting(
                 self.config["TASK_SCHEDULER"]["BATCH_SIZE"], int

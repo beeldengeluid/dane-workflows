@@ -88,7 +88,9 @@ class DANEHandler:
         self.DANE_ES_QUERY_TIMEOUT = config["DANE_ES_QUERY_TIMEOUT"]
 
     def _get_batch_file_name(self, proc_batch_id: int) -> str:
-        fn = os.path.join(self.STATUS_DIR, f"{self._get_proc_batch_name(proc_batch_id)}.json")
+        fn = os.path.join(
+            self.STATUS_DIR, f"{self._get_proc_batch_name(proc_batch_id)}.json"
+        )
         self.logger.debug(f"{proc_batch_id} --> filename: {fn}")
         return fn
 
@@ -97,7 +99,9 @@ class DANEHandler:
         try:
             return json.load(open(self._get_batch_file_name(proc_batch_id)))
         except Exception:
-            self.logger.exception(f"Could not load {self._get_proc_batch_name(proc_batch_id)}.json")
+            self.logger.exception(
+                f"Could not load {self._get_proc_batch_name(proc_batch_id)}.json"
+            )
             return None
 
     # use to feed _add_tasks_to_batch()
@@ -132,7 +136,9 @@ class DANEHandler:
                     {
                         "query_string": {
                             "default_field": "creator.id",
-                            "query": '"{}"'.format(self._get_proc_batch_name(proc_batch_id)),
+                            "query": '"{}"'.format(
+                                self._get_proc_batch_name(proc_batch_id)
+                            ),
                         }
                     }
                 ]
@@ -205,7 +211,9 @@ class DANEHandler:
         else:
             for hit in result["hits"]["hits"]:
                 all_tasks.append(self._to_task(hit))
-            self.logger.debug(f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}")
+            self.logger.debug(
+                f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
+            )
             return self.get_tasks_of_batch(
                 proc_batch_id, all_tasks, offset + size, size
             )
@@ -229,7 +237,9 @@ class DANEHandler:
         else:
             for hit in result["hits"]["hits"]:
                 all_results.append(self._to_result(hit))
-            self.logger.debug(f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}")
+            self.logger.debug(
+                f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
+            )
             return self.get_results_of_batch(
                 proc_batch_id, all_results, offset + size, size
             )
@@ -544,12 +554,13 @@ class DANEHandler:
                     "url": sr.target_url,
                     "type": "Video",
                 },
-                {"id": self._get_proc_batch_name(sr.proc_batch_id), "type": "Organization"},
+                {
+                    "id": self._get_proc_batch_name(sr.proc_batch_id),
+                    "type": "Organization",
+                },
             ).to_json()
             for sr in status_rows
         ]
-    
+
     def _get_proc_batch_name(self, proc_batch_id):
         return f"{self.BATCH_PREFIX}_{proc_batch_id}"
-
-

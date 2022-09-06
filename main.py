@@ -6,6 +6,7 @@ from typing import List
 from dane_workflows.util.base_util import load_config
 from dane_workflows.task_scheduler import TaskScheduler
 
+
 def __init_data_dirs(data_dirs: List[str]) -> bool:
     print("Checking if DATA_DIR exists")
     for path in data_dirs:
@@ -18,6 +19,7 @@ def __init_data_dirs(data_dirs: List[str]) -> bool:
                 return False
     return True
 
+
 def __import_module(module_path: str):
     tmp = module_path.split(".")
     if len(tmp) != 3:
@@ -28,10 +30,13 @@ def __import_module(module_path: str):
     # globals()[tmp[2]] = workflow_class
     return workflow_class
 
+
 # test a full workflow
 if __name__ == "__main__":
-     # first determine which config file to use
-    parser = argparse.ArgumentParser(description="dane-workflows default start-up script")
+    # first determine which config file to use
+    parser = argparse.ArgumentParser(
+        description="dane-workflows default start-up script"
+    )
     parser.add_argument("--cfg", action="store", dest="cfg", default="config.yml")
     args = parser.parse_args()
     print(f"Going to load the following config: {args.cfg}")
@@ -70,7 +75,7 @@ if __name__ == "__main__":
         __import_module(config["DATA_PROVIDER"]["TYPE"]),
         __import_module(config["PROC_ENV"]["TYPE"]),
         __import_module(config["EXPORTER"]["TYPE"]),
-        __import_module(config["STATUS_MONITOR"]["TYPE"])
+        __import_module(config["STATUS_MONITOR"]["TYPE"]),
     )
 
     ts.run()

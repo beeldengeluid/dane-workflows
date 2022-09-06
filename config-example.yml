@@ -6,8 +6,12 @@ TASK_SCHEDULER:  # configures: dane_workflows.task_scheduler
   BATCH_SIZE: 5  # number of items returned by DataProvider.get_next_batch
   BATCH_LIMIT: -1 # limit of batches to process (-1 for no limit)
   MONITOR_FREQ: -1  # after each n batches call the STATUS_MONITOR
+STATUS_HANDLER:  # recommended implementation; stores to local file
+  TYPE: dane_workflows.status.SQLiteStatusHandler
+  CONFIG:
+    DB_FILE : ./proc_stats/all_stats.db  # Local file db
 DATA_PROVIDER:  # configures: ExampleDataProvider
-  TYPE: ExampleDataProvider
+  TYPE: dane_workflows.data_provider.ExampleDataProvider
   CONFIG: 
     SOURCE_BATCH_SIZE: 10
     DATA:  # usually DANE environments simply require an ID and content URL to work 
@@ -17,18 +21,8 @@ DATA_PROVIDER:  # configures: ExampleDataProvider
       - 
         id: "video_1"
         url: "https://your_video_files_2.mp4"
-STATUS_HANDLER:  # recommended implementation; stores to local file
-  TYPE: SQLiteStatusHandler
-  CONFIG:
-    DB_FILE : ./proc_stats/all_stats.db  # Local file db
-STATUS_MONITOR:  # optional, for monitoring 
-  TYPE: SlackStatusMonitor
-  CONFIG:
-    TOKEN: "<your token here>"
-    CHANNEL: "<your slack channel here>"
-    WORKFLOW_NAME: "<workflow name here>"
 PROC_ENV:  # to connect to a DANE environment, set TYPE to DANEEnvironment and provide a valid CONFIG
-  TYPE: ExampleDataProcessingEnvironment
+  TYPE: dane_workflows.data_processing.ExampleDataProcessingEnvironment
   # TYPE: DANEEnvironment
   # CONFIG: 
   #   DANE_HOST: "your-dane-host"
@@ -40,6 +34,11 @@ PROC_ENV:  # to connect to a DANE environment, set TYPE to DANEEnvironment and p
   #   DANE_ES_INDEX: 'dane-index-your-env'
   #   DANE_ES_QUERY_TIMEOUT: 20 #seconds?
   #   DANE_BATCH_PREFIX: your_test  # used to track different batches
-
 EXPORTER:  # implement your own Exporter by subclassing from Exporter
-  TYPE: ExampleExporter
+  TYPE: dane_workflows.exporter.ExampleExporter
+STATUS_MONITOR:  # optional, for monitoring 
+  TYPE: dane_workflows.status_monitor.SlackStatusMonitor
+  CONFIG:
+    TOKEN: "<your token here>"
+    CHANNEL: "<your slack channel here>"
+    WORKFLOW_NAME: "<workflow name here>"

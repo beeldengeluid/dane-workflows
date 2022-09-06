@@ -26,7 +26,6 @@ def config():
 @pytest.fixture
 def slack_monitor_config():
     config = load_config(relative_from_file(__file__, "../../config-unit-test.yml"))
-    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
     config["STATUS_MONITOR"]["CONFIG"] = {}
     config["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = "some_random_token"
     config["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = "a_channel"
