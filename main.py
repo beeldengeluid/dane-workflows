@@ -5,10 +5,6 @@ from pathlib import Path
 from typing import List
 from dane_workflows.util.base_util import load_config
 from dane_workflows.task_scheduler import TaskScheduler
-from dane_workflows.status import SQLiteStatusHandler
-from dane_workflows.data_provider import ExampleDataProvider
-from dane_workflows.data_processing import ExampleDataProcessingEnvironment, DANEEnvironment
-from dane_workflows.exporter import ExampleExporter
 
 def __init_data_dirs(data_dirs: List[str]) -> bool:
     print("Checking if DATA_DIR exists")
@@ -22,11 +18,20 @@ def __init_data_dirs(data_dirs: List[str]) -> bool:
                 return False
     return True
 
+def __import_module(module_path: str):
+    tmp = module_path.split(".")
+    if len(tmp) != 3:
+        print(f"Malconfigured module path: {module_path}")
+        sys.exit()
+    module = getattr(__import__(tmp[0]), tmp[1])
+    workflow_class = getattr(module, tmp[2])
+    # globals()[tmp[2]] = workflow_class
+    return workflow_class
+
 # test a full workflow
 if __name__ == "__main__":
-
      # first determine which config file to use
-    parser = argparse.ArgumentParser(description="Short sample app")
+    parser = argparse.ArgumentParser(description="dane-workflows default start-up script")
     parser.add_argument("--cfg", action="store", dest="cfg", default="config.yml")
     args = parser.parse_args()
     print(f"Going to load the following config: {args.cfg}")
@@ -61,10 +66,11 @@ if __name__ == "__main__":
 
     ts = TaskScheduler(
         config,
-        SQLiteStatusHandler,
-        ExampleDataProvider,
-        DANEEnvironment,  # ExampleDataProcessingEnvironment,
-        ExampleExporter,
+        __import_module(config["STATUS_HANDLER"]["TYPE"]),
+        __import_module(config["DATA_PROVIDER"]["TYPE"]),
+        __import_module(config["PROC_ENV"]["TYPE"]),
+        __import_module(config["EXPORTER"]["TYPE"]),
+        __import_module(config["STATUS_MONITOR"]["TYPE"])
     )
 
     ts.run()

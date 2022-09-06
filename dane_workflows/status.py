@@ -111,11 +111,6 @@ class StatusRow:
 class StatusHandler(ABC):
     def __init__(self, config):
 
-        # check if the configured TYPE is the same as the StatusHandler being instantiated
-        if self.__class__.__name__ != config["STATUS_HANDLER"]["TYPE"]:
-            print("Malconfigured class instance")
-            sys.exit()
-
         # only used so the data provider knows which source_batch it was at
         self.cur_source_batch: List[StatusRow] = None  # call recover to fill it
         self.logger = get_logger(config)

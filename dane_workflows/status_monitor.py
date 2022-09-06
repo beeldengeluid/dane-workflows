@@ -16,12 +16,6 @@ from dane_workflows.util.base_util import get_logger, check_setting, load_config
 class StatusMonitor(ABC):
     def __init__(self, config: dict, status_handler: StatusHandler):
         self.status_handler = status_handler
-
-        # check if the configured TYPE is the same as the StatusMonitor being instantiated
-        if self.__class__.__name__ != config["STATUS_MONITOR"]["TYPE"]:
-            print("Malconfigured class instance")
-            sys.exit()
-
         self.logger = get_logger(config)
         self.config = (
             config["STATUS_MONITOR"]["CONFIG"]

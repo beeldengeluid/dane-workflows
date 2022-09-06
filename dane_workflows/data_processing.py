@@ -49,11 +49,6 @@ If the actual processing environment requires textual input data, either:
 class DataProcessingEnvironment(ABC):
     def __init__(self, config, status_handler: StatusHandler, unit_test: bool = False):
 
-        # check if the configured TYPE is the same as the DataProcessingEnvironment being instantiated
-        if self.__class__.__name__ != config["PROC_ENV"]["TYPE"]:
-            print("Malconfigured class instance")
-            sys.exit()
-
         self.config = (
             config["PROC_ENV"]["CONFIG"] if "CONFIG" in config["PROC_ENV"] else {}
         )

@@ -22,10 +22,6 @@ class DataProvider(ABC):
     def __init__(
         self, config: dict, status_handler: StatusHandler, unit_test: bool = False
     ):
-        # check if the configured TYPE is the same as the DataProvider being instantiated
-        if self.__class__.__name__ != config["DATA_PROVIDER"]["TYPE"]:
-            print("Malconfigured class instance")
-            sys.exit()
 
         self.config = config["DATA_PROVIDER"]["CONFIG"]
         self.logger = get_logger(config)  # logging was already initialised by owner

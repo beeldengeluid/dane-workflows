@@ -14,11 +14,6 @@ This class is owned by a TaskScheduler to export results obtained from a process
 class Exporter(ABC):
     def __init__(self, config, status_handler: StatusHandler, unit_test: bool = False):
 
-        # check if the configured TYPE is the same as the Exporter being instantiated
-        if self.__class__.__name__ != config["EXPORTER"]["TYPE"]:
-            print(f"Malconfigured class instance: {config['EXPORTER']['TYPE']}")
-            sys.exit()
-
         self.config = (
             config["EXPORTER"]["CONFIG"] if "CONFIG" in config["EXPORTER"] else {}
         )
