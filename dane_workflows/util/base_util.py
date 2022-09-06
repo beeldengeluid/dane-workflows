@@ -1,9 +1,11 @@
 import os
+import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from yaml import load, FullLoader
 from yaml.scanner import ScannerError
 from pathlib import Path
+from typing import List
 
 
 # returns the root of this repo by running "cd ../.." from this __file__ on
@@ -72,6 +74,30 @@ def load_config(cfg_file):
     except (FileNotFoundError, ScannerError) as e:
         print(e)
     return None
+
+
+def init_data_dirs(data_dirs: List[str]) -> bool:
+    print("Checking if DATA_DIR exists")
+    for path in data_dirs:
+        if not os.path.exists(path):
+            print(f"path: '{path}' does not exist, creating it...")
+            try:
+                os.makedirs(path)
+            except OSError:
+                print(f"OSError {path} could not be created...")
+                return False
+    return True
+
+
+def import_module(module_path: str):
+    tmp = module_path.split(".")
+    if len(tmp) != 3:
+        print(f"Malconfigured module path: {module_path}")
+        sys.exit()
+    module = getattr(__import__(tmp[0]), tmp[1])
+    workflow_class = getattr(module, tmp[2])
+    # globals()[tmp[2]] = workflow_class
+    return workflow_class
 
 
 def init_logger(config):

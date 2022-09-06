@@ -1,35 +1,8 @@
 import argparse
-import os
 import sys
 from pathlib import Path
-from typing import List
-from dane_workflows.util.base_util import load_config
+from dane_workflows.util.base_util import load_config, import_module, init_data_dirs
 from dane_workflows.task_scheduler import TaskScheduler
-
-
-def __init_data_dirs(data_dirs: List[str]) -> bool:
-    print("Checking if DATA_DIR exists")
-    for path in data_dirs:
-        if not os.path.exists(path):
-            print(f"path: '{path}' does not exist, creating it...")
-            try:
-                os.makedirs(path)
-            except OSError:
-                print(f"OSError {path} could not be created...")
-                return False
-    return True
-
-
-def __import_module(module_path: str):
-    tmp = module_path.split(".")
-    if len(tmp) != 3:
-        print(f"Malconfigured module path: {module_path}")
-        sys.exit()
-    module = getattr(__import__(tmp[0]), tmp[1])
-    workflow_class = getattr(module, tmp[2])
-    # globals()[tmp[2]] = workflow_class
-    return workflow_class
-
 
 # test a full workflow
 if __name__ == "__main__":
@@ -63,7 +36,7 @@ if __name__ == "__main__":
         data_dirs.append(pe_conf["DANE_STATUS_DIR"])
 
     # make sure they all exist before continuing
-    if not __init_data_dirs(data_dirs):
+    if not init_data_dirs(data_dirs):
         print(
             "Could not create all the necessary data dirs to start-up this workflow, quitting"
         )
@@ -71,11 +44,11 @@ if __name__ == "__main__":
 
     ts = TaskScheduler(
         config,
-        __import_module(config["STATUS_HANDLER"]["TYPE"]),
-        __import_module(config["DATA_PROVIDER"]["TYPE"]),
-        __import_module(config["PROC_ENV"]["TYPE"]),
-        __import_module(config["EXPORTER"]["TYPE"]),
-        __import_module(config["STATUS_MONITOR"]["TYPE"]),
+        import_module(config["STATUS_HANDLER"]["TYPE"]),
+        import_module(config["DATA_PROVIDER"]["TYPE"]),
+        import_module(config["PROC_ENV"]["TYPE"]),
+        import_module(config["EXPORTER"]["TYPE"]),
+        import_module(config["STATUS_MONITOR"]["TYPE"]),
     )
 
     ts.run()
