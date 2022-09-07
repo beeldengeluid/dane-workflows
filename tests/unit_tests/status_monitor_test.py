@@ -21,25 +21,25 @@ def test__check_status(config):
     dummy_last_source_batch_id = 2
 
     dummy_error_code_counts_for_proc_batch = {
-        ErrorCode.IMPOSSIBLE: 2,
-        ErrorCode.BATCH_REGISTER_FAILED: 1,
+        "IMPOSSIBLE": 2,
+        "BATCH_REGISTER_FAILED": 1,
     }
 
     dummy_status_counts_for_proc_batch = {
-        ProcessingStatus.ERROR: 3,
-        ProcessingStatus.NEW: 1,
-        ProcessingStatus.FINISHED: 2,
+        "ERROR": 3,
+        "NEW": 1,
+        "FINISHED": 2,
     }
     dummy_error_code_counts_for_source_batch = {
-        ErrorCode.IMPOSSIBLE: 1,
-        ErrorCode.EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE: 2,
-        ErrorCode.EXPORT_FAILED_SOURCE_DOC_NOT_FOUND: 1,
+        "IMPOSSIBLE": 1,
+        "EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE": 2,
+        "EXPORT_FAILED_SOURCE_DOC_NOT_FOUND": 1,
     }
 
     dummy_status_counts_for_source_batch = {
-        ProcessingStatus.ERROR: 4,
-        ProcessingStatus.NEW: 5,
-        ProcessingStatus.BATCH_ASSIGNED: 2,
+        "ERROR": 4,
+        "NEW": 5,
+        "BATCH_ASSIGNED": 2,
     }
     with when(ExampleStatusHandler).get_last_proc_batch_id().thenReturn(
         dummy_last_proc_batch_id
