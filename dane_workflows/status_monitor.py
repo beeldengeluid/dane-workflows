@@ -89,8 +89,7 @@ class StatusMonitor(ABC):
                 f"{ErrorCode(error_code).name}" if error_code else "N/A": count
                 for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
                     last_proc_batch_id
-                ).items() if self.status_handler.get_error_code_counts_for_proc_batch_id(
-                    last_proc_batch_id)
+                ).items() if error_code
             }),
             # get status and error code information for last batch retrieved
             "Status information for last source batch retrieved": {
@@ -103,7 +102,7 @@ class StatusMonitor(ABC):
                 (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
                 for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
                     last_source_batch_id
-                ).items()
+                ).items() if error_code
             },
         }
 
