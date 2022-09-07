@@ -5,7 +5,7 @@ from logging.handlers import TimedRotatingFileHandler
 from yaml import load, FullLoader
 from yaml.scanner import ScannerError
 from pathlib import Path
-
+from importlib import import_module
 
 # returns the root of this repo by running "cd ../.." from this __file__ on
 def get_repo_root() -> str:
@@ -95,12 +95,13 @@ def load_config(cfg_file):
     return None
 
 
-def import_module(module_path: str):
+def import_dane_workflow_module(module_path: str):
     tmp = module_path.split(".")
     if len(tmp) != 3:
         print(f"Malconfigured module path: {module_path}")
         sys.exit()
-    module = getattr(__import__(tmp[0]), tmp[1])
+    # module = getattr(__import__(tmp[0]), tmp[1])
+    module = import_module(f"{tmp[0]}.{tmp[1]}")
     workflow_class = getattr(module, tmp[2])
     # globals()[tmp[2]] = workflow_class
     return workflow_class
