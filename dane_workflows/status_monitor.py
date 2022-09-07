@@ -66,6 +66,7 @@ class StatusMonitor(ABC):
         retrieved from the data provider
         """
 
+
         last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
         last_source_batch_id = self.status_handler.get_last_source_batch_id()
 
@@ -78,31 +79,32 @@ class StatusMonitor(ABC):
             # get last batch retrieved
             "Last source batch retrieved": last_source_batch_id,
             # get status and error code information for last batch processed
-            "Status information for last batch processed": [
-                f"{ProcessingStatus(status)}: {count}"
+            "Status information for last batch processed": {
+                f"{ProcessingStatus(status).name}": count
                 for status, count in self.status_handler.get_status_counts_for_proc_batch_id(
                     last_proc_batch_id
                 ).items()
-            ],
-            "Error information for last batch processed": [
-                f"{ErrorCode(error_code)}: {count}" if error_code else "N/A"
+            },
+            "Error information for last batch processed": ({
+                f"{ErrorCode(error_code).name}" if error_code else "N/A": count
                 for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
                     last_proc_batch_id
-                ).items()
-            ],
+                ).items() if self.status_handler.get_error_code_counts_for_proc_batch_id(
+                    last_proc_batch_id)
+            }),
             # get status and error code information for last batch retrieved
-            "Status information for last source batch retrieved": [
-                f"{ProcessingStatus(status)}: {count}"
+            "Status information for last source batch retrieved": {
+                f"{ProcessingStatus(status).name}": count
                 for status, count in self.status_handler.get_status_counts_for_source_batch_id(
                     last_source_batch_id
                 ).items()
-            ],
-            "Error information for last source batch retrieved": [
-                f"{ErrorCode(error_code)}: {count}" if error_code else "N/A"
+            },
+            "Error information for last source batch retrieved": {
+                (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
                 for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
                     last_source_batch_id
                 ).items()
-            ],
+            },
         }
 
     def _get_detailed_status_report(self, include_extra_info):
