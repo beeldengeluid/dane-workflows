@@ -7,6 +7,7 @@ from dane_workflows.util.base_util import (
     check_setting,
     load_config,
     validate_file_paths,
+    init_data_dirs,
 )
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus, ErrorCode
 from dane_workflows.util.dane_util import DANEHandler, Task, Result, TaskType

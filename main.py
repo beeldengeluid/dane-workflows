@@ -1,7 +1,7 @@
 import argparse
 import sys
 from pathlib import Path
-from dane_workflows.util.base_util import load_config, import_module, init_data_dirs
+from dane_workflows.util.base_util import load_config, import_module
 from dane_workflows.task_scheduler import TaskScheduler
 
 # test a full workflow
@@ -20,6 +20,7 @@ if __name__ == "__main__":
         print(f"Not a valid file path or config file {args.cfg}")
         sys.exit()
 
+    """ TODO Move auto creation of dirs to _validate_config functions of each component
     dp_conf = config["DATA_PROVIDER"]["CONFIG"]
     pe_conf = config["PROC_ENV"]["CONFIG"] if "CONFIG" in config["PROC_ENV"] else None
     sh_conf = (
@@ -41,6 +42,7 @@ if __name__ == "__main__":
             "Could not create all the necessary data dirs to start-up this workflow, quitting"
         )
         sys.exit()
+    """
 
     ts = TaskScheduler(
         config,

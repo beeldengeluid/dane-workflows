@@ -67,6 +67,25 @@ def validate_file_paths(paths: list):
         raise (e)
 
 
+def get_parent_dir(path: str) -> str:
+    return Path(path).parent
+
+
+# the parent dir of the configured directory has to exist for this to work
+def auto_create_dir(path: str) -> bool:
+    print(f"Trying to automatically create dir: {path}")
+    if not os.path.exists(get_parent_dir(path)):
+        print(f"Error: cannot automatically create {path}; parent dir does not exist")
+        return False
+    if not os.path.exists(path):
+        print(f"Dir: '{path}' does not exist, creating it...")
+        try:
+            os.makedirs(path)
+        except OSError:
+            print(f"OSError {path} could not be created...")
+            return False
+    return True
+
 def load_config(cfg_file):
     try:
         with open(cfg_file, "r") as yamlfile:
@@ -74,19 +93,6 @@ def load_config(cfg_file):
     except (FileNotFoundError, ScannerError) as e:
         print(e)
     return None
-
-
-def init_data_dirs(data_dirs: List[str]) -> bool:
-    print("Checking if DATA_DIR exists")
-    for path in data_dirs:
-        if not os.path.exists(path):
-            print(f"path: '{path}' does not exist, creating it...")
-            try:
-                os.makedirs(path)
-            except OSError:
-                print(f"OSError {path} could not be created...")
-                return False
-    return True
 
 
 def import_module(module_path: str):
