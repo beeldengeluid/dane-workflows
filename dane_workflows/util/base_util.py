@@ -5,7 +5,6 @@ from logging.handlers import TimedRotatingFileHandler
 from yaml import load, FullLoader
 from yaml.scanner import ScannerError
 from pathlib import Path
-from typing import List
 
 
 # returns the root of this repo by running "cd ../.." from this __file__ on
@@ -67,7 +66,7 @@ def validate_file_paths(paths: list):
         raise (e)
 
 
-def get_parent_dir(path: str) -> str:
+def get_parent_dir(path: str) -> Path:
     return Path(path).parent
 
 
@@ -85,6 +84,7 @@ def auto_create_dir(path: str) -> bool:
             print(f"OSError {path} could not be created...")
             return False
     return True
+
 
 def load_config(cfg_file):
     try:

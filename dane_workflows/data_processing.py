@@ -6,8 +6,7 @@ from dane_workflows.util.base_util import (
     get_logger,
     check_setting,
     load_config,
-    validate_file_paths,
-    init_data_dirs,
+    auto_create_dir,
 )
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus, ErrorCode
 from dane_workflows.util.dane_util import DANEHandler, Task, Result, TaskType
@@ -213,7 +212,9 @@ class DANEEnvironment(DataProcessingEnvironment):
                 self.config["DANE_ES_QUERY_TIMEOUT"], int
             ), "DANEEnvironment.DANE_ES_QUERY_TIMEOUT"
 
-            validate_file_paths([self.config["DANE_STATUS_DIR"]])  # dir must exist
+            assert (
+                auto_create_dir(self.config["DANE_STATUS_DIR"]) is True
+            ), f"DANE_STATUS_DIR: {self.config['DANE_STATUS_DIR']} auto creation failed"
         except AssertionError as e:
             self.logger.error(f"Configuration error: {str(e)}")
             return False

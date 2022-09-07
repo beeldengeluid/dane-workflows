@@ -8,7 +8,7 @@ from dane_workflows.util.base_util import (
     get_logger,
     check_setting,
     load_config,
-    validate_file_paths,
+    auto_create_dir,
 )
 import sqlite3
 from datetime import datetime
@@ -454,9 +454,12 @@ class SQLiteStatusHandler(StatusHandler):
             assert check_setting(
                 self.config["DB_FILE"], str
             ), "SQLiteStatusHandler.DB_FILE"
-            validate_file_paths(
-                [Path(self.config["DB_FILE"]).parent]
-            )  # parent dir must exist
+
+            # auto create the parent dir of the db file
+            db_file_par_dir = Path(self.config["DB_FILE"]).parent
+            assert (
+                auto_create_dir(db_file_par_dir) is True
+            ), f"DB_FILE: {db_file_par_dir} auto creation failed"
         except AssertionError as e:
             self.logger.error(f"Configuration error: {str(e)}")
             return False
