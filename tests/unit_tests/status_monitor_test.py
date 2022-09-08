@@ -21,25 +21,25 @@ def test__check_status(config):
     dummy_last_source_batch_id = 2
 
     dummy_error_code_counts_for_proc_batch = {
-        "IMPOSSIBLE": 2,
-        "BATCH_REGISTER_FAILED": 1,
+        ErrorCode.IMPOSSIBLE.value: 2,
+        ErrorCode.BATCH_REGISTER_FAILED.value: 1,
     }
 
     dummy_status_counts_for_proc_batch = {
-        "ERROR": 3,
-        "NEW": 1,
-        "FINISHED": 2,
+        ProcessingStatus.ERROR.value: 3,
+        ProcessingStatus.NEW.value: 1,
+        ProcessingStatus.FINISHED.value: 2,
     }
     dummy_error_code_counts_for_source_batch = {
-        "IMPOSSIBLE": 1,
-        "EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE": 2,
-        "EXPORT_FAILED_SOURCE_DOC_NOT_FOUND": 1,
+        ErrorCode.IMPOSSIBLE.value: 1,
+        ErrorCode.EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE.value: 2,
+        ErrorCode.EXPORT_FAILED_SOURCE_DOC_NOT_FOUND.value: 1,
     }
 
     dummy_status_counts_for_source_batch = {
-        "ERROR": 4,
-        "NEW": 5,
-        "BATCH_ASSIGNED": 2,
+        ProcessingStatus.ERROR.value: 4,
+        ProcessingStatus.NEW.value: 5,
+        ProcessingStatus.BATCH_ASSIGNED.value: 2,
     }
     with when(ExampleStatusHandler).get_last_proc_batch_id().thenReturn(
         dummy_last_proc_batch_id
@@ -77,19 +77,19 @@ def test__check_status(config):
         assert status_info["Last source batch retrieved"] == dummy_last_source_batch_id
 
         for key in dummy_status_counts_for_proc_batch:
-            assert f"{key}: {dummy_status_counts_for_proc_batch[key]}" in str(
+            assert f"\'{ProcessingStatus(key).name}\': {dummy_status_counts_for_proc_batch[key]}" in str(
                 status_info
             )
         for key in dummy_error_code_counts_for_proc_batch:
-            assert f"{key}: {dummy_error_code_counts_for_proc_batch[key]}" in str(
+            assert f"\'{ErrorCode(key).name}\': {dummy_error_code_counts_for_proc_batch[key]}" in str(
                 status_info
             )
         for key in dummy_status_counts_for_source_batch:
-            assert f"{key}: {dummy_status_counts_for_source_batch[key]}" in str(
+            assert f"\'{ProcessingStatus(key).name}\': {dummy_status_counts_for_source_batch[key]}" in str(
                 status_info
             )
         for key in dummy_error_code_counts_for_source_batch:
-            assert f"{key}: {dummy_error_code_counts_for_source_batch[key]}" in str(
+            assert f"\'{ErrorCode(key).name}\': {dummy_error_code_counts_for_source_batch[key]}" in str(
                 status_info
             )
 
