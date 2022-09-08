@@ -240,7 +240,9 @@ class ExampleStatusMonitor(StatusMonitor):
     def monitor_status(self):
         """Retrieves the status and error information and communicates this via the terminal"""
         status_info = self._check_status()
-        error_report = self._get_detailed_status_report(status_info)
+        error_report = self._get_detailed_status_report(
+            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
+        )
         formatted_status_info = self._format_status_info(status_info)
         formatted_error_report = self._format_error_report(error_report)
         self._send_status(formatted_status_info, formatted_error_report)
