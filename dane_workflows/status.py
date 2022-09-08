@@ -7,7 +7,7 @@ from pathlib import Path
 from dane_workflows.util.base_util import (
     get_logger,
     check_setting,
-    load_config,
+    load_config_or_die,
     auto_create_dir,
 )
 import sqlite3
@@ -897,5 +897,5 @@ class SQLiteStatusHandler(StatusHandler):
 # test your StatusHandler in isolation
 if __name__ == "__main__":
 
-    config = load_config("../config-example.yml")
+    config = load_config_or_die("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)

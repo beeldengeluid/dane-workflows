@@ -1,11 +1,36 @@
 import os
 import sys
+from argparse import ArgumentParser, Namespace
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from yaml import load, FullLoader
 from yaml.scanner import ScannerError
 from pathlib import Path
 from importlib import import_module
+from typing import Optional, Tuple
+
+
+# Call this first thing in your main.py to extract the default CMD line options and config YAML
+def extract_exec_params() -> Optional[Tuple[dict, Namespace]]:
+    parser = ArgumentParser(description="DANE workflow")
+    parser.add_argument("--cfg", action="store", dest="cfg", default="config.yml")
+    parser.add_argument("--opt", action="store", dest="opt", default=None)
+    args = parser.parse_args()
+    print(f"Got the following CMD line arguments: {args}")
+    return load_config_or_die(args.cfg), args
+
+
+# since the config is vital, it should be available
+def load_config_or_die(cfg_file: str):
+    print(f"Going to load the following config: {cfg_file}")
+    try:
+        with open(cfg_file, "r") as yamlfile:
+            return load(yamlfile, Loader=FullLoader)
+    except (FileNotFoundError, ScannerError) as e:
+        print(f"Not a valid file path or config file {cfg_file}")
+        print(e)
+        sys.exit()
+
 
 # returns the root of this repo by running "cd ../.." from this __file__ on
 def get_repo_root() -> str:
@@ -84,15 +109,6 @@ def auto_create_dir(path: str) -> bool:
             print(f"OSError {path} could not be created...")
             return False
     return True
-
-
-def load_config(cfg_file):
-    try:
-        with open(cfg_file, "r") as yamlfile:
-            return load(yamlfile, Loader=FullLoader)
-    except (FileNotFoundError, ScannerError) as e:
-        print(e)
-    return None
 
 
 def import_dane_workflow_module(module_path: str):

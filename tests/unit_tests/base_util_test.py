@@ -1,7 +1,8 @@
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from mockito import when, ANY
+from mockito import when, ANY, verify
 import os
+import sys
 import pytest
 from dane_workflows.util.base_util import (
     get_repo_root,
@@ -11,7 +12,7 @@ from dane_workflows.util.base_util import (
     check_log_level,
     validate_parent_dirs,
     validate_file_paths,
-    load_config,
+    load_config_or_die,
     init_logger,
 )
 
@@ -169,11 +170,13 @@ def test_validate_file_paths(paths, should_pass_test):
         (__file__, False),
     ],
 )
-def test_load_config(path_to_file, expect_file):
-    if expect_file:
-        assert load_config(path_to_file)
-    else:
-        assert not load_config(path_to_file)
+def test_load_config_or_die(path_to_file, expect_file):
+    with when(sys).exit().thenReturn():
+        if expect_file:
+            assert load_config_or_die(path_to_file)
+        else:
+            assert not load_config_or_die(path_to_file)
+            verify(sys, times=1).exit()
 
 
 def test_init_logger(config):

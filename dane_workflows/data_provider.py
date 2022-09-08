@@ -5,7 +5,7 @@ from uuid import uuid4
 from dane_workflows.util.base_util import (
     get_logger,
     check_setting,
-    load_config,
+    load_config_or_die,
 )
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus
 
@@ -189,6 +189,6 @@ class ExampleDataProvider(DataProvider):
 if __name__ == "__main__":
     from dane_workflows.status import SQLiteStatusHandler
 
-    config = load_config("../config-example.yml")
+    config = load_config_or_die("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)
     dp = ExampleDataProvider(config, status_handler)

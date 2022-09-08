@@ -22,18 +22,17 @@ DATA_PROVIDER:  # configures: ExampleDataProvider
         id: "video_1"
         url: "https://your_video_files_2.mp4"
 PROC_ENV:  # to connect to a DANE environment, set TYPE to DANEEnvironment and provide a valid CONFIG
-  TYPE: dane_workflows.data_processing.ExampleDataProcessingEnvironment
-  # TYPE: DANEEnvironment
-  # CONFIG: 
-  #   DANE_HOST: "your-dane-host"
-  #   DANE_TASK_ID: "DOWNLOAD"  # tested BG_DOWNLOAD, which works; now testing ASR
-  #   DANE_STATUS_DIR : ../dane_stats
-  #   DANE_MONITOR_INTERVAL: 3  # seconds
-  #   DANE_ES_HOST: 'your-dane-es-host'
-  #   DANE_ES_PORT: 1234
-  #   DANE_ES_INDEX: 'dane-index-your-env'
-  #   DANE_ES_QUERY_TIMEOUT: 20 #seconds?
-  #   DANE_BATCH_PREFIX: your_test  # used to track different batches
+  TYPE: dane_workflows.data_processing.DANEEnvironment
+  CONFIG: 
+    DANE_HOST: "your-dane-host"
+    DANE_TASK_ID: "DOWNLOAD"  # tested BG_DOWNLOAD, which works; now testing ASR
+    DANE_STATUS_DIR : ../dane_stats
+    DANE_MONITOR_INTERVAL: 3  # seconds
+    DANE_ES_HOST: 'your-dane-es-host'
+    DANE_ES_PORT: 1234
+    DANE_ES_INDEX: 'dane-index-your-env'
+    DANE_ES_QUERY_TIMEOUT: 20 #seconds?
+    DANE_BATCH_PREFIX: your_test  # used to track different batches
 EXPORTER:  # implement your own Exporter by subclassing from Exporter
   TYPE: dane_workflows.exporter.ExampleExporter
 STATUS_MONITOR:  # optional, for monitoring 
@@ -42,3 +41,4 @@ STATUS_MONITOR:  # optional, for monitoring
     TOKEN: "<your token here>"
     CHANNEL: "<your slack channel here>"
     WORKFLOW_NAME: "<workflow name here>"
+    INCLUDE_EXTRA_INFO: true

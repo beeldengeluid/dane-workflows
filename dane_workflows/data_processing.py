@@ -5,7 +5,7 @@ from typing import List, Optional
 from dane_workflows.util.base_util import (
     get_logger,
     check_setting,
-    load_config,
+    load_config_or_die,
     auto_create_dir,
 )
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus, ErrorCode
@@ -374,6 +374,6 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
 if __name__ == "__main__":
     from dane_workflows.status import SQLiteStatusHandler
 
-    config = load_config("../config-example.yml")
+    config = load_config_or_die("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)
     dpe = DANEEnvironment(config, status_handler)

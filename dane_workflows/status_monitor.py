@@ -10,7 +10,7 @@ from dane_workflows.status import (
     ProcessingStatus,
     ErrorCode,
 )
-from dane_workflows.util.base_util import get_logger, check_setting, load_config
+from dane_workflows.util.base_util import get_logger, check_setting, load_config_or_die
 
 
 class StatusMonitor(ABC):
@@ -35,11 +35,11 @@ class StatusMonitor(ABC):
         try:
             assert all(
                 [x in self.config for x in ["INCLUDE_EXTRA_INFO"]]
-            ), "STATUS_MONITOR.keys"
+            ), "StatusMonitor.INCLUDE_EXTRA_INFO missing"
 
             assert check_setting(
                 self.config["INCLUDE_EXTRA_INFO"], bool
-            ), "StatusMonitor.INCLUDE_EXTRA_INFO"
+            ), "StatusMonitor.INCLUDE_EXTRA_INFO not a bool"
 
         except AssertionError as e:
             self.logger.error(f"Configuration error: {str(e)}")
@@ -238,6 +238,7 @@ class SlackStatusMonitor(StatusMonitor):
         if not StatusMonitor._validate_config(
             self
         ):  # if superclass validate fails, all fails
+            self.logger.error("StatusMonitor default config section not valid")
             return False
         else:
             try:
@@ -361,7 +362,7 @@ if __name__ == "__main__":
     """Call this to test your chosen StatusMonitor independently.
     It will then run on the status handler specified in the config"""
 
-    config = load_config(
+    config = load_config_or_die(
         "../config-example.yml"
     )  # TODO: how do we get this to work from within a workflow with the correct config?
     status_handler = ExampleStatusHandler(config)

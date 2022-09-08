@@ -330,32 +330,3 @@ class TaskScheduler(object):
 
         self.logger.info(f"Successfully exported proc_batch {proc_batch_id} output")
         return True
-
-
-# test a full workflow
-if __name__ == "__main__":
-    from dane_workflows.util.base_util import load_config
-    from dane_workflows.status import SQLiteStatusHandler
-    from dane_workflows.data_provider import ExampleDataProvider
-    from dane_workflows.data_processing import (
-        ExampleDataProcessingEnvironment,
-        # DANEEnvironment,
-    )
-    from dane_workflows.exporter import ExampleExporter
-    from dane_workflows.status_monitor import ExampleStatusMonitor
-
-    print("Starting task scheduler")
-    config = load_config("../config.yml")
-
-    # print(config)
-
-    ts = TaskScheduler(
-        config,
-        SQLiteStatusHandler,
-        ExampleDataProvider,
-        ExampleDataProcessingEnvironment,
-        ExampleExporter,
-        ExampleStatusMonitor,
-    )
-
-    ts.run()
