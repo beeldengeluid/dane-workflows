@@ -196,7 +196,9 @@ class TaskScheduler(object):
 
             # optionally, monitor the status
             if self.status_monitor:
+                self.logger.debug(f"check wether or not to monitor to slack: proc_batch_id: {proc_batch_id}, monitor_freq:{self.MONITOR_FREQ}, monitor: {proc_batch_id % self.MONITOR_FREQ}")
                 if proc_batch_id % self.MONITOR_FREQ == 0:
+                    self.logger.info("monitoring_status")
                     self.status_monitor.monitor_status()
 
     # asks the DataProvider for a new proc_batch
