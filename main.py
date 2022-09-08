@@ -9,14 +9,14 @@ By defualt the following CMD line params are supported:
 * --opt=anything-you-like (default=None)
 """
 if __name__ == "__main__":
-    config, cmd_args = extract_exec_params()
+    config, cmd_args, logger = extract_exec_params()
 
     # insert custom behaviour e.g. before running the workflow
     if cmd_args.opt == "anything-you-like":
-        print("Well I never!")
+        logger.info("Well I never!")
 
     # obtain the runner, i.e. TaskScheduler
     runner = construct_task_scheduler(config)
     runner.run()
 
-    print("All done")
+    logger.info("All done")

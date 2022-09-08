@@ -1,6 +1,6 @@
 import sys
 from typing import List, Type, Tuple, Optional
-import dane_workflows.util.base_util as base_util
+from dane_workflows.util import base_util
 from dane_workflows.data_provider import DataProvider, ProcessingStatus
 from dane_workflows.data_processing import DataProcessingEnvironment, ProcessingResult
 from dane_workflows.exporter import Exporter
@@ -34,10 +34,12 @@ class TaskScheduler(object):
         unit_test: bool = False,
     ):
         self.config = config
+        self.logger = base_util.get_logger(config)  # first init the logger
 
         if not self._validate_config():
-            print("Malconfigured, quitting...")
+            self.logger.critical("Malconfigured, quitting...")
             sys.exit()
+            return  # in unit tests, sys.exit is mocked, so return
 
         self.BATCH_SIZE = config["TASK_SCHEDULER"]["BATCH_SIZE"]
 
@@ -53,7 +55,6 @@ class TaskScheduler(object):
             if "MONITOR_FREQ" in config["TASK_SCHEDULER"]
             else -1
         )  # optional monitoring frequency
-        self.logger = base_util.init_logger(config)  # first init the logger
 
         # first initialize the status handler and pass it to the data provider and processing env
         self.status_handler: StatusHandler = status_handler(config)
@@ -72,24 +73,7 @@ class TaskScheduler(object):
             )  # optional monitoring
 
     def _validate_config(self):
-        parent_dirs_to_check = []
         try:
-            # check logging
-            assert "LOGGING" in self.config, "LOGGING"
-            assert all(
-                [x in self.config["LOGGING"] for x in ["NAME", "DIR", "LEVEL"]]
-            ), "LOGGING.keys"
-            assert base_util.check_setting(
-                self.config["LOGGING"]["LEVEL"], str
-            ), "LOGGING.LEVEL"
-            assert base_util.check_log_level(
-                self.config["LOGGING"]["LEVEL"]
-            ), "Invalid LOGGING.LEVEL defined"
-            assert base_util.check_setting(
-                self.config["LOGGING"]["DIR"], str
-            ), "LOGGING.DIR"
-            parent_dirs_to_check.append(self.config["LOGGING"]["DIR"])
-
             # check settings for this class
             assert "TASK_SCHEDULER" in self.config, "TASK_SCHEDULER"
             assert all(
@@ -98,12 +82,16 @@ class TaskScheduler(object):
             assert base_util.check_setting(
                 self.config["TASK_SCHEDULER"]["BATCH_SIZE"], int
             ), "TASK_SCHEDULER.BATCH_SIZE"
+
+            # check optional parameter types
             if "BATCH_LIMIT" in self.config["TASK_SCHEDULER"]:
                 assert base_util.check_setting(
                     self.config["TASK_SCHEDULER"]["BATCH_LIMIT"], int
                 ), "TASK_SCHEDULER.BATCH_LIMIT"
-
-            base_util.validate_parent_dirs(parent_dirs_to_check)
+            if "MONITOR_FREQ" in self.config["TASK_SCHEDULER"]:
+                assert base_util.check_setting(
+                    self.config["TASK_SCHEDULER"]["MONITOR_FREQ"], int
+                ), "TASK_SCHEDULER.MONITOR_FREQ"
         except AssertionError as e:
             print(f"Configuration error: {str(e)}")
             return False

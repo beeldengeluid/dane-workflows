@@ -14,6 +14,9 @@ class LoggerMock(object):
     def error(self, info_string):
         pass
 
+    def critical(self, info_string):
+        pass
+
 
 def new_batch(
     source_batch_id: int,
