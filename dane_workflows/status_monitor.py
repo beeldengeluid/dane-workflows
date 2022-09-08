@@ -130,14 +130,26 @@ class StatusMonitor(ABC):
             "Current semantic source batch ID": self.status_handler.get_name_of_source_batch_id(
                 self.status_handler.get_cur_source_batch_id()
             ),
-            "Status overview": self.status_handler.get_status_counts(),
-            "Error overview": self.status_handler.get_error_code_counts(),
+            "Status overview": {
+                f"{ProcessingStatus(status).name}": count
+                for status, count in self.status_handler.get_status_counts().items()
+            },
+            "Error overview": {
+                (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
+                for error_code, count in self.status_handler.get_error_code_counts().items() if error_code
+            }
         }
 
         if include_extra_info:
+            status_counts_per_extra_info_value = self.status_handler.get_status_counts_per_extra_info_value()
             error_report[
                 "Status overview per extra info"
-            ] = self.status_handler.get_status_counts_per_extra_info_value()
+            ] = {
+                    extra_info: {f"{ProcessingStatus(status).name}": count
+                     for status, count in status_counts_per_extra_info_value[extra_info].items()
+                     }
+                     for extra_info in status_counts_per_extra_info_value
+                }
 
         return error_report
 
@@ -342,7 +354,7 @@ class SlackStatusMonitor(StatusMonitor):
         slack_client.chat_postMessage(
             channel=self.config["CHANNEL"],
             blocks=formatted_status,
-            icon_emoji=":ghost:",
+            icon_emoji=":female_elf:",
         )
 
         if formatted_error_report:  # only upload error file if has content

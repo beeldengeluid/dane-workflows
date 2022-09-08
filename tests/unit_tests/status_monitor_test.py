@@ -124,19 +124,19 @@ def test__get_detailed_status_report(config, include_extra_info):
     dummy_source_batch_id = "dummy-source-batch-id"
     dummy_semantic_source_batch_name = "dummy-semantic-source-batch-name"
     dummy_status_counts = {
-        ProcessingStatus.NEW: 1,
-        ProcessingStatus.ERROR: 3,
-        ProcessingStatus.FINISHED: 5,
+        ProcessingStatus.NEW.value: 1,
+        ProcessingStatus.ERROR.value: 3,
+        ProcessingStatus.FINISHED.value: 5,
     }
     dummy_error_code_counts = {
-        ErrorCode.IMPOSSIBLE: 1,
-        ErrorCode.EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE: 1,
-        ErrorCode.BATCH_ASSIGN_FAILED: 1,
+        ErrorCode.IMPOSSIBLE.value: 1,
+        ErrorCode.EXPORT_FAILED_SOURCE_DB_CONNECTION_FAILURE.value: 1,
+        ErrorCode.BATCH_ASSIGN_FAILED.value: 1,
     }
     dummy_status_counts_per_extra_info = {
-        "dummy-genre-1": {ProcessingStatus.NEW: 1},
-        "dummy-genre-2": {ProcessingStatus.ERROR: 2, ProcessingStatus.FINISHED: 3},
-        "dummy-genre-3": {ProcessingStatus.ERROR: 1, ProcessingStatus.FINISHED: 2},
+        "dummy-genre-1": {ProcessingStatus.NEW.value: 1},
+        "dummy-genre-2": {ProcessingStatus.ERROR.value: 2, ProcessingStatus.FINISHED: 3},
+        "dummy-genre-3": {ProcessingStatus.ERROR.value: 1, ProcessingStatus.FINISHED: 2},
     }
 
     with when(
@@ -185,16 +185,26 @@ def test__get_detailed_status_report(config, include_extra_info):
             == dummy_semantic_source_batch_name
         )
         assert "Status overview" in status_report
-        assert status_report["Status overview"] == dummy_status_counts
+        assert status_report["Status overview"] == {
+            f"{ProcessingStatus(status).name}": count
+            for status, count in dummy_status_counts.items()
+        }
         assert "Error overview" in status_report
-        assert status_report["Error overview"] == dummy_error_code_counts
+        assert status_report["Error overview"] == {
+            (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
+            for error_code, count in dummy_error_code_counts.items() if error_code
+        }
 
         if include_extra_info:
             assert "Status overview per extra info" in status_report
-            assert (
-                status_report["Status overview per extra info"]
-                == dummy_status_counts_per_extra_info
-            )
+            for extra_info in status_report["Status overview per extra info"]:
+                assert (
+                    status_report["Status overview per extra info"][extra_info]
+                    == {
+                        f"{ProcessingStatus(status).name}": count
+                        for status, count in dummy_status_counts_per_extra_info[extra_info].items()
+                    }
+                )
         else:
             assert "Status overview per extra info" not in status_report
 
