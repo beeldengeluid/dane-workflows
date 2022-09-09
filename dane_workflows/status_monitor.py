@@ -62,7 +62,6 @@ class StatusMonitor(ABC):
         retrieved from the data provider
         """
 
-
         last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
         last_source_batch_id = self.status_handler.get_last_source_batch_id()
 
@@ -81,12 +80,15 @@ class StatusMonitor(ABC):
                     last_proc_batch_id
                 ).items()
             },
-            "Error information for last batch processed": ({
-                f"{ErrorCode(error_code).name}" if error_code else "N/A": count
-                for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
-                    last_proc_batch_id
-                ).items() if error_code
-            }),
+            "Error information for last batch processed": (
+                {
+                    f"{ErrorCode(error_code).name}" if error_code else "N/A": count
+                    for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
+                        last_proc_batch_id
+                    ).items()
+                    if error_code
+                }
+            ),
             # get status and error code information for last batch retrieved
             "Status information for last source batch retrieved": {
                 f"{ProcessingStatus(status).name}": count
@@ -98,7 +100,8 @@ class StatusMonitor(ABC):
                 (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
                 for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
                     last_source_batch_id
-                ).items() if error_code
+                ).items()
+                if error_code
             },
         }
 

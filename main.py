@@ -8,7 +8,7 @@ Example main execution script for your (DANE) workflow:
 
 By defualt the following CMD line params are supported:
 * --cfg=./path_to_your/config.yml (default="config.yml")
-* --log=DEBUG|INFO|WARNING|ERROR|CRITICAL
+* --log=DEBUG|INFO|WARNING|ERROR|CRITICAL (default="DEBUG")
 * --opt=anything-you-like (default=None)
 """
 

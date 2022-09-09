@@ -49,7 +49,6 @@ def load_config_or_die(cfg_file: str):
 def validate_config(config) -> bool:
     try:
         required_components = [
-            "LOGGING",
             "TASK_SCHEDULER",
             "STATUS_HANDLER",
             "DATA_PROVIDER",
@@ -65,20 +64,10 @@ def validate_config(config) -> bool:
 
         # some components MUST have a TYPE defined
         for component in required_components:
-            if component in ["TASK_SCHEDULER", "LOGGING"]:  # no TYPE needed for these
+            if component in ["TASK_SCHEDULER"]:  # no TYPE needed for these
                 continue
             assert "TYPE" in config[component], f"{component}.TYPE missing"
 
-        # finally test if the logger is properly configured
-        assert all(
-            [x in config["LOGGING"] for x in ["NAME", "DIR", "LEVEL"]]
-        ), "LOGGING.keys"
-        assert check_setting(config["LOGGING"]["LEVEL"], str), "LOGGING.LEVEL"
-        assert check_log_level(
-            config["LOGGING"]["LEVEL"]
-        ), "Invalid LOGGING.LEVEL defined"
-        assert check_setting(config["LOGGING"]["DIR"], str), "LOGGING.DIR"
-        validate_parent_dirs(config["LOGGING"]["DIR"])
     except AssertionError:
         logger.exception("Invalid config YAML")
         return False

@@ -77,20 +77,24 @@ def test__check_status(config):
         assert status_info["Last source batch retrieved"] == dummy_last_source_batch_id
 
         for key in dummy_status_counts_for_proc_batch:
-            assert f"\'{ProcessingStatus(key).name}\': {dummy_status_counts_for_proc_batch[key]}" in str(
-                status_info
+            assert (
+                f"'{ProcessingStatus(key).name}': {dummy_status_counts_for_proc_batch[key]}"
+                in str(status_info)
             )
         for key in dummy_error_code_counts_for_proc_batch:
-            assert f"\'{ErrorCode(key).name}\': {dummy_error_code_counts_for_proc_batch[key]}" in str(
-                status_info
+            assert (
+                f"'{ErrorCode(key).name}': {dummy_error_code_counts_for_proc_batch[key]}"
+                in str(status_info)
             )
         for key in dummy_status_counts_for_source_batch:
-            assert f"\'{ProcessingStatus(key).name}\': {dummy_status_counts_for_source_batch[key]}" in str(
-                status_info
+            assert (
+                f"'{ProcessingStatus(key).name}': {dummy_status_counts_for_source_batch[key]}"
+                in str(status_info)
             )
         for key in dummy_error_code_counts_for_source_batch:
-            assert f"\'{ErrorCode(key).name}\': {dummy_error_code_counts_for_source_batch[key]}" in str(
-                status_info
+            assert (
+                f"'{ErrorCode(key).name}': {dummy_error_code_counts_for_source_batch[key]}"
+                in str(status_info)
             )
 
         verify(ExampleStatusHandler, times=1).get_last_proc_batch_id()
