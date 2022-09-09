@@ -1,6 +1,4 @@
-import logging
-from logging.handlers import TimedRotatingFileHandler
-from mockito import when, ANY, verify
+from mockito import when, verify
 import os
 import sys
 import pytest
@@ -13,7 +11,6 @@ from dane_workflows.util.base_util import (
     validate_parent_dirs,
     validate_file_paths,
     load_config_or_die,
-    init_logger,
 )
 
 
@@ -177,20 +174,3 @@ def test_load_config_or_die(path_to_file, expect_file):
         else:
             assert not load_config_or_die(path_to_file)
             verify(sys, times=1).exit()
-
-
-def test_init_logger(config):
-
-    with when(os.path).exists(ANY).thenReturn(True):
-        logger = init_logger(config)
-
-        assert logger
-        assert len(logger.handlers) == 2
-        assert isinstance(logger.handlers[0], TimedRotatingFileHandler)
-        assert (
-            logging.getLevelName(logger.handlers[0].level) == config["LOGGING"]["LEVEL"]
-        )
-        assert isinstance(logger.handlers[1], logging.StreamHandler)
-        assert (
-            logging.getLevelName(logger.handlers[1].level) == config["LOGGING"]["LEVEL"]
-        )

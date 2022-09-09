@@ -1,14 +1,16 @@
 import sys
 from abc import ABC, abstractmethod
 from typing import List
-
+import logging
 from dane_workflows.data_processing import ProcessingResult
-from dane_workflows.util.base_util import get_logger
 from dane_workflows.status import StatusHandler, ProcessingStatus
 
 """
 This class is owned by a TaskScheduler to export results obtained from a processing environment (such as DANE)
 """
+
+
+logger = logging.getLogger(__name__)
 
 
 class Exporter(ABC):
@@ -18,11 +20,9 @@ class Exporter(ABC):
             config["EXPORTER"]["CONFIG"] if "CONFIG" in config["EXPORTER"] else {}
         )
 
-        self.logger = get_logger(config)  # logging was already initialised by owner
-
         # enforce config validation
         if not self._validate_config():
-            self.logger.error("Malconfigured, quitting...")
+            logger.error("Malconfigured, quitting...")
             sys.exit()
 
         self.status_handler = status_handler
@@ -45,12 +45,12 @@ class ExampleExporter(Exporter):
 
     def export_results(self, results: List[ProcessingResult]) -> bool:
         if not results:
-            self.logger.warning("Received no results for export")
+            logger.warning("Received no results for export")
             return False
-        self.logger.debug(f"Received {len(results)} results to be exported")
+        logger.debug(f"Received {len(results)} results to be exported")
         status_rows = [result.status_row for result in results]
-        self.logger.debug("grab status rows from results")
-        self.logger.debug(status_rows)
+        logger.debug("grab status rows from results")
+        logger.debug(status_rows)
         self.status_handler.persist(  # everything is exported properly
             self.status_handler.update_status_rows(
                 status_rows, status=ProcessingStatus.FINISHED

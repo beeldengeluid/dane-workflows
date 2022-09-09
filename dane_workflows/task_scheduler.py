@@ -1,4 +1,5 @@
 import sys
+import logging
 from typing import List, Type, Tuple, Optional
 from dane_workflows.util import base_util
 from dane_workflows.data_provider import DataProvider, ProcessingStatus
@@ -22,6 +23,9 @@ these implementations with the specific parameters they require.
 """
 
 
+logger = logging.getLogger(__name__)
+
+
 class TaskScheduler(object):
     def __init__(
         self,
@@ -34,10 +38,9 @@ class TaskScheduler(object):
         unit_test: bool = False,
     ):
         self.config = config
-        self.logger = base_util.get_logger(config)  # first init the logger
 
         if not self._validate_config():
-            self.logger.critical("Malconfigured, quitting...")
+            logger.critical("Malconfigured, quitting...")
             sys.exit()
             return  # in unit tests, sys.exit is mocked, so return
 
@@ -109,7 +112,7 @@ class TaskScheduler(object):
             self.data_provider
         )
         if source_batch_recovered is False:
-            self.logger.info(
+            logger.info(
                 "Could not recover source_batch, so either the work was done or something is wrong with the DataProvider, quitting"
             )
             sys.exit()
@@ -119,7 +122,7 @@ class TaskScheduler(object):
 
         if last_proc_batch:
             last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
-            self.logger.info("Synchronizing last proc_batch with ProcessingEnvironment")
+            logger.info("Synchronizing last proc_batch with ProcessingEnvironment")
 
             # determine where to resume processing by looking at the highest step in the chain
             highest_proc_stat = 0
@@ -148,16 +151,14 @@ class TaskScheduler(object):
 
         # if a proc_batch was recovered, make sure to finish it from the last ProcessingStatus
         if last_proc_batch:
-            self.logger.info(
-                f"Recovered proc_batch {last_proc_batch_id}, finishing it up"
-            )
+            logger.info(f"Recovered proc_batch {last_proc_batch_id}, finishing it up")
             if (
                 self._run_proc_batch(last_proc_batch, last_proc_batch_id, skip_steps)
                 is True
             ):
                 last_proc_batch_id += 1  # continue on
             else:
-                self.logger.critical("Critical error whilst processing, quitting")
+                logger.critical("Critical error whilst processing, quitting")
 
         # ok now that the recovered proc_batch has completed, continue on from this proc_batch_id
         proc_batch_id = last_proc_batch_id
@@ -167,13 +168,13 @@ class TaskScheduler(object):
             # first get the next proc_batch from the DataProvider
             status_rows = self._get_next_proc_batch(proc_batch_id, self.BATCH_SIZE)
             if status_rows is None:
-                self.logger.info("No source_batch remaining, all done, quitting...")
+                logger.info("No source_batch remaining, all done, quitting...")
                 break
 
             # now that we have a new proc_batch, pass it on to the ProcessingEnvironment
             # and eventually the Exporter
             if self._run_proc_batch(status_rows, proc_batch_id) is False:
-                self.logger.critical("Critical error whilst processing, quitting")
+                logger.critical("Critical error whilst processing, quitting")
                 break
 
             # update the proc_batch_id and continue on to the next
@@ -188,7 +189,7 @@ class TaskScheduler(object):
     def _get_next_proc_batch(
         self, proc_batch_id: int, batch_size: int
     ) -> Optional[List[StatusRow]]:
-        self.logger.info(
+        logger.info(
             f"asking DataProvider for next batch: {proc_batch_id} ({batch_size})"
         )
         return self.data_provider.get_next_batch(proc_batch_id, batch_size)
@@ -196,7 +197,7 @@ class TaskScheduler(object):
     def _check_batch_limit(self, proc_batch_id):
         if self.BATCH_LIMIT >= 0:
             if proc_batch_id >= self.BATCH_LIMIT:
-                self.logger.info(
+                logger.info(
                     f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stopped processing"
                 )
                 sys.exit()
@@ -213,14 +214,14 @@ class TaskScheduler(object):
     def _run_proc_batch(
         self, status_rows: List[StatusRow], proc_batch_id: int, skip_steps: int = 0
     ) -> bool:
-        self.logger.info("Check the limit of batches to process")
+        logger.info("Check the limit of batches to process")
         self._check_batch_limit(proc_batch_id)
 
-        self.logger.info(
+        logger.info(
             f"Processing proc_batch {proc_batch_id}, skipping {skip_steps} steps"
         )
         if skip_steps >= 5:
-            self.logger.warning(
+            logger.warning(
                 f"Warning: why are you skipping so many (i.e. {skip_steps}) steps?"
             )
             return True
@@ -255,38 +256,36 @@ class TaskScheduler(object):
     def _register_proc_batch(
         self, proc_batch_id: int, proc_batch: List[StatusRow]
     ) -> bool:
-        self.logger.info(f"Registering batch: {proc_batch_id}")
+        logger.info(f"Registering batch: {proc_batch_id}")
         status_rows = self.data_processing_env.register_batch(proc_batch_id, proc_batch)
         if status_rows is None:
-            self.logger.error(f"Could not register batch {proc_batch_id}, quitting")
+            logger.error(f"Could not register batch {proc_batch_id}, quitting")
             return False
-        self.logger.info(f"Successfully registered batch: {proc_batch_id}")
+        logger.info(f"Successfully registered batch: {proc_batch_id}")
         return True
 
     # calls the ProcessingEnvironment to start processing the proc_batch
     def _process_proc_batch(self, proc_batch_id: int) -> bool:
-        self.logger.info(f"Triggering proc_batch to start processing: {proc_batch_id}")
+        logger.info(f"Triggering proc_batch to start processing: {proc_batch_id}")
         status_rows = self.data_processing_env.process_batch(proc_batch_id)
         if status_rows is None:
-            self.logger.error(
+            logger.error(
                 f"Could not trigger proc_batch {proc_batch_id} to start processing, quitting"
             )
             return False
-        self.logger.info(f"Successfully triggered the process for: {proc_batch_id}")
+        logger.info(f"Successfully triggered the process for: {proc_batch_id}")
         return True
 
     # calls the ProcessingEnvironment to start monitoring the progress of the proc_batch
     def _monitor_proc_batch(self, proc_batch_id: int) -> bool:
-        self.logger.info(
-            f"Start monitoring proc_batch until it finishes: {proc_batch_id}"
-        )
+        logger.info(f"Start monitoring proc_batch until it finishes: {proc_batch_id}")
         status_rows = self.data_processing_env.monitor_batch(proc_batch_id)
         if status_rows is None:
-            self.logger.error(
+            logger.error(
                 f"Error while monitoring proc_batch: {proc_batch_id}, quitting"
             )
             return False
-        self.logger.info(
+        logger.info(
             f"Successfully monitored proc_batch: {proc_batch_id} till it finished"
         )
         return True
@@ -295,26 +294,24 @@ class TaskScheduler(object):
     def _fetch_proc_batch_output(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
-        self.logger.info(f"Fetching output data for proc_batch: {proc_batch_id}")
+        logger.info(f"Fetching output data for proc_batch: {proc_batch_id}")
         output = self.data_processing_env.fetch_results_of_batch(proc_batch_id)
         if output is None:
-            self.logger.error(
+            logger.error(
                 f"Did not receive any processing results for {proc_batch_id}, quitting"
             )
             return None
-        self.logger.info(
-            f"Successfully retrieved output for proc_batch {proc_batch_id}"
-        )
+        logger.info(f"Successfully retrieved output for proc_batch {proc_batch_id}")
         return output
 
     # calls the Exporter to export the processing output of the proc_batch
     def _export_proc_batch_output(
         self, proc_batch_id: int, processing_results: List[ProcessingResult]
     ) -> bool:
-        self.logger.info(f"Exporting proc_batch output: {proc_batch_id}")
+        logger.info(f"Exporting proc_batch output: {proc_batch_id}")
         if not self.exporter.export_results(processing_results):
-            self.logger.warning(f"Could not export proc_batch {proc_batch_id} output")
+            logger.warning(f"Could not export proc_batch {proc_batch_id} output")
             return False
 
-        self.logger.info(f"Successfully exported proc_batch {proc_batch_id} output")
+        logger.info(f"Successfully exported proc_batch {proc_batch_id} output")
         return True

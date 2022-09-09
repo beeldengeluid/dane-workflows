@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 import sys
-
+import logging
 from slack_sdk import WebClient
 
 from dane_workflows.status import (
@@ -10,13 +10,15 @@ from dane_workflows.status import (
     ProcessingStatus,
     ErrorCode,
 )
-from dane_workflows.util.base_util import get_logger, check_setting, load_config_or_die
+from dane_workflows.util.base_util import check_setting, load_config_or_die
+
+
+logger = logging.getLogger(__name__)
 
 
 class StatusMonitor(ABC):
     def __init__(self, config: dict, status_handler: StatusHandler):
         self.status_handler = status_handler
-        self.logger = get_logger(config)
         self.config = (
             config["STATUS_MONITOR"]["CONFIG"]
             if "CONFIG" in config["STATUS_MONITOR"]
@@ -25,12 +27,12 @@ class StatusMonitor(ABC):
 
         # enforce config validation
         if not self._validate_config():
-            self.logger.error("Malconfigured, quitting...")
+            logger.error("Malconfigured, quitting...")
             sys.exit()
 
     def _validate_config(self) -> bool:
         """Check that the config contains the necessary parameters"""
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
 
         try:
             assert all(
@@ -42,7 +44,7 @@ class StatusMonitor(ABC):
             ), "StatusMonitor.INCLUDE_EXTRA_INFO not a bool"
 
         except AssertionError as e:
-            self.logger.error(f"Configuration error: {str(e)}")
+            logger.error(f"Configuration error: {str(e)}")
             return False
 
         return True
@@ -233,12 +235,12 @@ class SlackStatusMonitor(StatusMonitor):
 
     def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
 
         if not StatusMonitor._validate_config(
             self
         ):  # if superclass validate fails, all fails
-            self.logger.error("StatusMonitor default config section not valid")
+            logger.error("StatusMonitor default config section not valid")
             return False
         else:
             try:
@@ -259,7 +261,7 @@ class SlackStatusMonitor(StatusMonitor):
                 ), "SlackStatusMonitor.WORKFLOW_NAME"
 
             except AssertionError as e:
-                self.logger.error(f"Configuration error: {str(e)}")
+                logger.error(f"Configuration error: {str(e)}")
                 return False
 
         return True

@@ -1,8 +1,7 @@
 import sys
 import pytest
-from mockito import when, verify, spy2, ANY
+from mockito import when, verify, ANY
 from dane_workflows.task_scheduler import TaskScheduler
-import dane_workflows.data_provider
 from dane_workflows.data_provider import ExampleDataProvider
 from dane_workflows.data_processing import (
     ExampleDataProcessingEnvironment,
@@ -13,7 +12,7 @@ from dane_workflows.status import (
     ProcessingStatus,
 )
 from dane_workflows.status_monitor import ExampleStatusMonitor
-from test_util import new_batch, LoggerMock
+from test_util import new_batch
 
 
 @pytest.mark.parametrize(
@@ -34,11 +33,7 @@ def test_validate_config(config, error, success):
     elif error == "no_ts_batch_limit":
         del config["TASK_SCHEDULER"]["BATCH_LIMIT"]
 
-    logger_mock = LoggerMock()  # mock the logger to avoid log file output
-
-    with when(dane_workflows.util.base_util).get_logger(config).thenReturn(
-        logger_mock
-    ), when(sys).exit().thenReturn():
+    with when(sys).exit().thenReturn():
         TaskScheduler(
             config,
             ExampleStatusHandler,
@@ -47,7 +42,6 @@ def test_validate_config(config, error, success):
             ExampleExporter,
             unit_test=True,
         )
-        verify(dane_workflows.util.base_util, times=1).get_logger(config)
         verify(sys, times=0 if success else 1).exit()
 
 
@@ -62,19 +56,13 @@ def test_validate_config(config, error, success):
 def test_register_proc_batch(
     config, proc_batch, proc_batch_id, proc_env_success, success
 ):
-    logger_mock = LoggerMock()  # mock the logger to avoid log file output
-    with when(dane_workflows.util.base_util).get_logger(config).thenReturn(
-        logger_mock
-    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+    with when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
         ExampleDataProcessingEnvironment
     ).register_batch(
         proc_batch_id, proc_batch
     ).thenReturn(
         new_batch(0, ProcessingStatus.BATCH_REGISTERED) if proc_env_success else None
     ):
-        spy2(logger_mock.info)
-        spy2(logger_mock.error)
-
         ts = TaskScheduler(
             config,
             ExampleStatusHandler,
@@ -85,12 +73,9 @@ def test_register_proc_batch(
         )
 
         assert ts._register_proc_batch(proc_batch_id, proc_batch) == success
-        verify(dane_workflows.util.base_util, times=1).get_logger(config)
         verify(ExampleDataProcessingEnvironment, times=1).register_batch(
             proc_batch_id, ANY
         )
-        verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
-        verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)
 
 
 @pytest.mark.parametrize(
@@ -101,19 +86,13 @@ def test_register_proc_batch(
     ],
 )
 def test_process_proc_batch(config, proc_batch_id, proc_env_success, success):
-    logger_mock = LoggerMock()
-    with when(dane_workflows.util.base_util).get_logger(config).thenReturn(
-        logger_mock
-    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+    with when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
         ExampleDataProcessingEnvironment
     ).process_batch(
         proc_batch_id
     ).thenReturn(
         new_batch(0, ProcessingStatus.PROCESSING) if proc_env_success else None
     ):
-        spy2(logger_mock.info)
-        spy2(logger_mock.error)
-
         ts = TaskScheduler(
             config,
             ExampleStatusHandler,
@@ -124,10 +103,7 @@ def test_process_proc_batch(config, proc_batch_id, proc_env_success, success):
         )
 
         assert ts._process_proc_batch(proc_batch_id) == success
-        verify(dane_workflows.util.base_util, times=1).get_logger(config)
         verify(ExampleDataProcessingEnvironment, times=1).process_batch(proc_batch_id)
-        verify(logger_mock, times=2 if proc_env_success else 1).info(ANY)
-        verify(logger_mock, times=0 if proc_env_success else 1).error(ANY)
 
 
 @pytest.mark.parametrize(

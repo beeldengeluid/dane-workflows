@@ -1,5 +1,9 @@
 from dane_workflows.util.base_util import import_dane_workflow_module
 from dane_workflows.task_scheduler import TaskScheduler
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def construct_task_scheduler(config) -> TaskScheduler:

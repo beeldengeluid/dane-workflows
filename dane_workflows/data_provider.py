@@ -1,9 +1,9 @@
 import sys
+import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import uuid4
 from dane_workflows.util.base_util import (
-    get_logger,
     check_setting,
     load_config_or_die,
 )
@@ -18,19 +18,21 @@ were already processed AND to keep track of which IDs could not be processed by 
 """
 
 
+logger = logging.getLogger(__name__)
+
+
 class DataProvider(ABC):
     def __init__(
         self, config: dict, status_handler: StatusHandler, unit_test: bool = False
     ):
 
         self.config = config["DATA_PROVIDER"]["CONFIG"]
-        self.logger = get_logger(config)  # logging was already initialised by owner
-        self.logger.debug("intialising DATA PROVIDER")
+        logger.debug("intialising DATA PROVIDER")
         self.status_handler = status_handler
 
         # enforce config validation
         if not self._validate_config():
-            self.logger.error("Malconfigured, quitting...")
+            logger.error("Malconfigured, quitting...")
             sys.exit()
 
     """
@@ -72,28 +74,28 @@ class DataProvider(ABC):
             new_source_batch = self.fetch_source_batch_data(
                 self.status_handler.get_cur_source_batch_id() + 1
             )
-            self.logger.info(f"New source_batch is ok: {new_source_batch is not None}")
+            logger.info(f"New source_batch is ok: {new_source_batch is not None}")
             if new_source_batch:  # make the StatusHandler track the new batch
                 if called_recursively:
                     # we have a problem, as we are in an infinite loop
-                    self.logger.error(
+                    logger.error(
                         "Entering infinite loop in get_next_batch(), breaking out"
                     )
                     return None
                 self.status_handler.set_current_source_batch(new_source_batch)
-                self.logger.info(
+                logger.info(
                     "Loaded new source_batch in memory, now fetching the first proc_batch"
                 )
                 return self.get_next_batch(
                     proc_batch_id, batch_size, called_recursively=True
                 )
             else:  # no more data available
-                self.logger.info(
+                logger.info(
                     "No more data available from source, TaskScheduler should quit"
                 )
                 return None
 
-        self.logger.debug(f"Continuing with {len(unprocessed)} unprocessed items")
+        logger.debug(f"Continuing with {len(unprocessed)} unprocessed items")
 
         # 3. assign the proc_batch_id to the unprocessed[0:batch_size]
         self.status_handler.persist(
@@ -114,20 +116,18 @@ class ExampleDataProvider(DataProvider):
 
         # either set dummy data OR data provided via self.config["DATA"]
         self.data = [{"id": str(uuid4()), "url": f"https://{x}"} for x in range(0, 100)]
-        self.logger.debug(self.config.get("DATA", None))
+        logger.debug(self.config.get("DATA", None))
         if self.config.get("DATA", None) is not None:
-            self.logger.info(f"Setting {len(self.config['DATA'])} of custom items")
+            logger.info(f"Setting {len(self.config['DATA'])} of custom items")
             self.data = self.config["DATA"]
         else:
-            self.logger.info(
-                "No DATA specfied in config, continuing with 100 dummy items"
-            )
+            logger.info("No DATA specfied in config, continuing with 100 dummy items")
 
         # now that the config has been validated, assign the config to global vars (for readability)
         self.SOURCE_BATCH_SIZE: int = self.config["SOURCE_BATCH_SIZE"]
 
     def _validate_config(self) -> bool:
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
         try:
             assert (
                 "SOURCE_BATCH_SIZE" in self.config
@@ -139,7 +139,7 @@ class ExampleDataProvider(DataProvider):
                 self.config.get("DATA", None), list, True
             ), "ExampleDataProvider.DATA"
         except AssertionError as e:
-            self.logger.error(f"Configuration error: {str(e)}")
+            logger.error(f"Configuration error: {str(e)}")
             return False
 
         return True
@@ -180,8 +180,8 @@ class ExampleDataProvider(DataProvider):
                     proc_error_code=None,
                 )
             )
-        self.logger.debug("fetched source batch data")
-        # self.logger.debug(batch_data)
+        logger.debug("fetched source batch data")
+        # logger.debug(batch_data)
         return batch_data
 
 
