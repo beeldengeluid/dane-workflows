@@ -197,7 +197,7 @@ class DANEHandler:
         self.logger.debug(json.dumps(query, indent=4, sort_keys=True))
         result = self.DANE_ES.search(
             index=self.DANE_ES_INDEX,
-            body=query,
+            query=query,
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,
         )
         if len(result["hits"]["hits"]) <= 0:
