@@ -1,6 +1,6 @@
 import os
 import pytest
-from dane_workflows.util.base_util import load_config, relative_from_file
+from dane_workflows.util.base_util import load_config_or_die, relative_from_file
 
 
 WORKFLOW_ROOT_DIR = relative_from_file(__file__, os.sep.join(["..", ".."]))
@@ -8,7 +8,9 @@ WORKFLOW_ROOT_DIR = relative_from_file(__file__, os.sep.join(["..", ".."]))
 
 @pytest.fixture()
 def config():
-    config = load_config(relative_from_file(__file__, "../../config-unit-test.yml"))
+    config = load_config_or_die(
+        relative_from_file(__file__, "../../config-unit-test.yml")
+    )
 
     # adjust paths as these are relative
     if (
@@ -25,8 +27,9 @@ def config():
 
 @pytest.fixture
 def slack_monitor_config():
-    config = load_config(relative_from_file(__file__, "../../config-unit-test.yml"))
-    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
+    config = load_config_or_die(
+        relative_from_file(__file__, "../../config-unit-test.yml")
+    )
     config["STATUS_MONITOR"]["CONFIG"] = {}
     config["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = "some_random_token"
     config["STATUS_MONITOR"]["CONFIG"]["CHANNEL"] = "a_channel"

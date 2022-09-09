@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 import sys
+import logging
 from dataclasses import dataclass
 from enum import IntEnum, unique
 from typing import List, Optional, Tuple
 from pathlib import Path
 from dane_workflows.util.base_util import (
-    get_logger,
     check_setting,
-    load_config,
-    validate_file_paths,
+    load_config_or_die,
+    auto_create_dir,
 )
 import sqlite3
 from datetime import datetime
@@ -18,6 +18,9 @@ from sqlite3 import Error  # superclass of all sqlite3 Exceptions
 Represents whether the DANE processing of a resource was successful or not
 Possibly, other statuses will be added later on
 """
+
+
+logger = logging.getLogger(__name__)
 
 
 @unique
@@ -111,14 +114,8 @@ class StatusRow:
 class StatusHandler(ABC):
     def __init__(self, config):
 
-        # check if the configured TYPE is the same as the StatusHandler being instantiated
-        if self.__class__.__name__ != config["STATUS_HANDLER"]["TYPE"]:
-            print("Malconfigured class instance")
-            sys.exit()
-
         # only used so the data provider knows which source_batch it was at
         self.cur_source_batch: List[StatusRow] = None  # call recover to fill it
-        self.logger = get_logger(config)
         self.config = (
             config["STATUS_HANDLER"]["CONFIG"]
             if "CONFIG" in config["STATUS_HANDLER"]
@@ -127,7 +124,7 @@ class StatusHandler(ABC):
 
         # enforce config validation
         if not self._validate_config():
-            self.logger.error("Malconfigured, quitting...")
+            logger.critical("Malconfigured, quitting...")
             sys.exit()
 
     """ ------------------------------------ ABSTRACT FUNCTIONS -------------------------------- """
@@ -255,7 +252,7 @@ class StatusHandler(ABC):
 
     # called by the data provider to start keeping track of the latest source batch
     def set_current_source_batch(self, status_rows: List[StatusRow]):
-        self.logger.debug(
+        logger.debug(
             f"Setting new source_batch of {len(status_rows) if status_rows else 0} items"
         )
         self.cur_source_batch = status_rows  # set the new source batch data
@@ -300,37 +297,35 @@ class StatusHandler(ABC):
         return status_rows
 
     def persist_or_die(self, status_rows: Optional[List[StatusRow]]):
-        self.logger.debug(
-            f"Persist or die; status_rows are ok: {status_rows is not None}"
-        )
+        logger.debug(f"Persist or die; status_rows are ok: {status_rows is not None}")
         if self.persist(status_rows) is False:
-            self.logger.critical(
+            logger.critical(
                 "Could not persists status, so quitting to avoid corrupt state"
             )
             sys.exit()
 
     def persist(self, status_rows: Optional[List[StatusRow]]) -> bool:
         if not status_rows or type(status_rows) != list or len(status_rows) == 0:
-            self.logger.warning(
+            logger.warning(
                 f"Warning: trying to update status with invalid/empty status data {type(status_rows)}"
             )
             return False
 
         # make sure to update the date_modified before persisting
         if self._persist(self._update_status_rows_modification_date(status_rows)):
-            self.logger.debug(
+            logger.debug(
                 "persisted updated status_rows, now syncing with current source batch"
             )
             return (
                 self._recover_source_batch()
             )  # make sure the source batch is also updated
-        self.logger.error("Could not persist status rows!")
+        logger.error("Could not persist status rows!")
         return False
 
     def _update_status_rows_modification_date(
         self, status_rows: List[StatusRow]
     ) -> List[StatusRow]:
-        self.logger.debug("Updating modification date before persisting to DB")
+        logger.debug("Updating modification date before persisting to DB")
         for row in status_rows:
             row.date_modified = datetime.now()
         return status_rows
@@ -344,18 +339,18 @@ class StatusHandler(ABC):
 
         # if nothing was found, try to start afresh, using the data_provider
         if source_batch_recovered is False:
-            self.logger.info("No source_batch could be recovered, starting afresh")
+            logger.info("No source_batch could be recovered, starting afresh")
             status_rows = data_provider.fetch_source_batch_data(0)
             if status_rows is not None:
-                self.logger.info("Starting from the first source_batch")
+                logger.info("Starting from the first source_batch")
                 self.set_current_source_batch(status_rows)
                 source_batch_recovered = True
         else:
-            self.logger.info("Found an earlier source_batch to recover")
+            logger.info("Found an earlier source_batch to recover")
 
         cur_proc_batch = self._recover_proc_batch()
         if cur_proc_batch is None:
-            self.logger.warning("Could not recover proc batch")
+            logger.warning("Could not recover proc batch")
         return (
             source_batch_recovered,
             cur_proc_batch,
@@ -375,14 +370,12 @@ class ExampleStatusHandler(StatusHandler):
         super().__init__(config)
 
     def _validate_config(self) -> bool:
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
         return True  # no particular settings for this StatusHandler
 
     # called on start-up of the TaskScheduler
     def _recover_source_batch(self) -> bool:
-        self.logger.debug(
-            f"{self.__class__.__name__} simply mocks source_batch recovery"
-        )
+        logger.debug(f"{self.__class__.__name__} simply mocks source_batch recovery")
         self.cur_source_batch: List[StatusRow] = []
         return True  # just return true, so super.persist() will work in unit tests
 
@@ -441,7 +434,7 @@ class SQLiteStatusHandler(StatusHandler):
         super().__init__(config)
         self.DB_FILE: str = self.config["DB_FILE"]
         if self._init_database() is False:
-            self.logger.debug(f"Could not initialize the DB: {self.DB_FILE}")
+            logger.critical(f"Could not initialize the DB: {self.DB_FILE}")
             sys.exit()
 
     def _init_database(self):
@@ -453,27 +446,30 @@ class SQLiteStatusHandler(StatusHandler):
         return False
 
     def _validate_config(self) -> bool:
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
         try:
             assert "DB_FILE" in self.config, "SQLiteStatusHandler config incomplete"
             assert check_setting(
                 self.config["DB_FILE"], str
             ), "SQLiteStatusHandler.DB_FILE"
-            validate_file_paths(
-                [Path(self.config["DB_FILE"]).parent]
-            )  # parent dir must exist
+
+            # auto create the parent dir of the db file
+            db_file_par_dir = Path(self.config["DB_FILE"]).parent
+            assert (
+                auto_create_dir(db_file_par_dir) is True
+            ), f"DB_FILE: {db_file_par_dir} auto creation failed"
         except AssertionError as e:
-            self.logger.error(f"Configuration error: {str(e)}")
+            logger.error(f"Configuration error: {str(e)}")
             return False
 
         return True
 
     # called on start-up of the TaskScheduler
     def _recover_source_batch(self) -> bool:
-        self.logger.debug("Recovering source batch from DB")
+        logger.debug("Recovering source batch from DB")
         source_batch_id = self.get_last_source_batch_id()
         if source_batch_id == -1:
-            self.logger.info("no source batch ID found in DB, nothing to recover")
+            logger.info("no source batch ID found in DB, nothing to recover")
             return False
         conn = self._create_connection(self.DB_FILE)
         with conn:
@@ -483,10 +479,10 @@ class SQLiteStatusHandler(StatusHandler):
                 (source_batch_id,),
             )
             if db_rows:
-                self.logger.info("Recovered a source batch from the DB")
+                logger.info("Recovered a source batch from the DB")
                 self.cur_source_batch = self._to_status_rows(db_rows)
                 return True
-        self.logger.info("Could not recover a source batch somehow")
+        logger.info("Could not recover a source batch somehow")
         return False
 
     def _persist(self, status_rows: List[StatusRow]) -> bool:
@@ -502,7 +498,7 @@ class SQLiteStatusHandler(StatusHandler):
     def get_status_rows_of_proc_batch(
         self, proc_batch_id: int
     ) -> Optional[List[StatusRow]]:
-        self.logger.debug("Fetching proc batch from DB")
+        logger.debug("Fetching proc batch from DB")
         conn = self._create_connection(self.DB_FILE)
         with conn:
             db_rows = self._run_select_query(
@@ -517,7 +513,7 @@ class SQLiteStatusHandler(StatusHandler):
     def get_status_rows_of_source_batch(
         self, source_batch_id: int
     ) -> Optional[List[StatusRow]]:
-        self.logger.debug("Fetching source batch from DB")
+        logger.debug("Fetching source batch from DB")
         conn = self._create_connection(self.DB_FILE)
         with conn:
             db_rows = self._run_select_query(
@@ -776,7 +772,7 @@ class SQLiteStatusHandler(StatusHandler):
         try:
             conn = sqlite3.connect(db_file)
         except Error:
-            self.logger.exception(f"Could not connect to DB: {db_file}")
+            logger.exception(f"Could not connect to DB: {db_file}")
         return conn
 
     def _create_table(self, conn, create_table_sql) -> bool:
@@ -785,7 +781,7 @@ class SQLiteStatusHandler(StatusHandler):
             c.execute(create_table_sql)
             return True
         except Error:
-            self.logger.exception("Could not create status_rows table")
+            logger.exception("Could not create status_rows table")
         return False
 
     def _delete_all_rows(self):
@@ -795,7 +791,7 @@ class SQLiteStatusHandler(StatusHandler):
             conn.commit()
             return True
         except Error:
-            self.logger.exception("Could not delete all status_rows from table")
+            logger.exception("Could not delete all status_rows from table")
         return False
 
     def _get_table_sql(self):
@@ -859,8 +855,8 @@ class SQLiteStatusHandler(StatusHandler):
 
     def _save_status_row(self, conn, status_row: StatusRow):
         row_tuple = self._to_tuple(status_row)
-        self.logger.info("Creating/updating status row")
-        self.logger.debug(row_tuple)
+        logger.info("Creating/updating status row")
+        logger.debug(row_tuple)
         sql = """
             INSERT OR REPLACE INTO status_rows(
                 target_id,
@@ -884,12 +880,12 @@ class SQLiteStatusHandler(StatusHandler):
             conn.commit()
             return cur.lastrowid
         except Error:  # TODO check if this prints a meaningful sqlite3 error message
-            self.logger.exception("Could not save status row")
+            logger.exception("Could not save status row")
         return None
 
     def _run_select_query(self, conn, query, params):
-        self.logger.debug(query)
-        self.logger.debug(params)
+        logger.debug(query)
+        logger.debug(params)
         cur = conn.cursor()
         cur.execute(query, params)
         rows = cur.fetchall()
@@ -899,5 +895,5 @@ class SQLiteStatusHandler(StatusHandler):
 # test your StatusHandler in isolation
 if __name__ == "__main__":
 
-    config = load_config("../config-example.yml")
+    config = load_config_or_die("../config-example.yml")
     status_handler = SQLiteStatusHandler(config)

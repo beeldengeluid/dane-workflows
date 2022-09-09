@@ -206,7 +206,6 @@ def test_get_status_counts_for_proc_batch_id(
     config, statuses, proc_batch_ids, expected_status_counts
 ):
     try:
-        config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
         # use a test folder to store the database so production database is not affected
         if os.getcwd().endswith("unit_tests"):
@@ -320,7 +319,6 @@ def test_get_error_code_counts_for_proc_batch_id(
     config, error_codes, proc_batch_ids, expected_error_code_counts
 ):
     try:
-        config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
         # use a test folder to store the database so production database is not affected
         if os.getcwd().endswith("unit_tests"):
@@ -434,7 +432,6 @@ def test_get_status_counts_for_source_batch_id(
     config, statuses, source_batch_ids, expected_status_counts
 ):
     try:
-        config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
         # use a test folder to store the database so production database is not affected
         if os.getcwd().endswith("unit_tests"):
@@ -547,7 +544,6 @@ def test_get_status_counts_for_source_batch_id(
 def test_get_error_code_counts_for_source_batch_id(
     config, error_codes, source_batch_ids, expected_error_code_counts
 ):
-    config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
     if os.getcwd().endswith("unit_tests"):
@@ -650,8 +646,6 @@ def test_get_error_code_counts_for_source_batch_id(
 def test_get_completed_semantic_source_batch_ids(
     config, statuses, semantic_source_batch_ids, expected_complete, expected_incomplete
 ):
-
-    config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
     if os.getcwd().endswith("unit_tests"):
@@ -784,8 +778,6 @@ def test_get_running_statuses_and_completed_statuses():
 )
 def test_get_status_counts(config, statuses, source_batch_ids, expected_status_counts):
 
-    config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
-
     # use a test folder to store the database so production database is not affected
     if os.getcwd().endswith("unit_tests"):
         config["STATUS_HANDLER"]["CONFIG"] = {
@@ -907,8 +899,6 @@ def test_get_error_code_counts(
     config, error_codes, source_batch_ids, expected_error_code_counts
 ):
 
-    config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
-
     # use a test folder to store the database so production database is not affected
     if os.getcwd().endswith("unit_tests"):
         config["STATUS_HANDLER"]["CONFIG"] = {
@@ -1012,8 +1002,6 @@ def test_get_error_code_counts(
 def test_get_status_counts_per_extra_info(
     config, statuses, extra_info_values, expected_status_counts
 ):
-
-    config["STATUS_HANDLER"]["TYPE"] = "SQLiteStatusHandler"
 
     # use a test folder to store the database so production database is not affected
     if os.getcwd().endswith("unit_tests"):

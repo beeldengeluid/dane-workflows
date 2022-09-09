@@ -1,10 +1,9 @@
 from mockito import unstub, when, ANY, verify, spy2
 import pytest
 import sys
-import dane_workflows.util.base_util
 from dane_workflows.data_processing import ExampleDataProcessingEnvironment
 from dane_workflows.status import ExampleStatusHandler, ProcessingStatus, ErrorCode
-from test_util import new_batch, LoggerMock
+from test_util import new_batch
 
 
 @pytest.mark.parametrize(
@@ -18,12 +17,9 @@ from test_util import new_batch, LoggerMock
 def test_register_batch(
     config, proc_batch_id, proc_batch, register_success, status_persisted
 ):
-    logger_mock = LoggerMock()
     status_handler = ExampleStatusHandler(config)
     dpe = ExampleDataProcessingEnvironment(config, status_handler)
-    with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
-        logger_mock
-    ), when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
+    with when(  # mock success/failure by returning empty status_rows or ones with proper status_rows
         dpe
     )._register_batch(
         proc_batch_id, proc_batch
@@ -58,20 +54,13 @@ def test_register_batch(
     [(0, False, True), (0, True, True), (0, True, False)],
 )
 def test_process_batch(config, proc_batch_id, proc_env_error, status_persisted):
-    logger_mock = LoggerMock()
     status_handler = ExampleStatusHandler(config)
     dpe = ExampleDataProcessingEnvironment(config, status_handler)
-    with when(dane_workflows.util.base_util).init_logger(config).thenReturn(
-        logger_mock
-    ), when(dpe)._set_by_processing_response(proc_batch_id, ANY).thenReturn(
+    with when(dpe)._set_by_processing_response(proc_batch_id, ANY).thenReturn(
         new_batch(0, ProcessingStatus.ERROR, ErrorCode.BATCH_PROCESSING_NOT_STARTED)
         if proc_env_error
         else new_batch(0, ProcessingStatus.PROCESSING)
-    ), when(
-        status_handler
-    ).persist(
-        ANY
-    ).thenReturn(
+    ), when(status_handler).persist(ANY).thenReturn(
         status_persisted
     ), when(  # mock, so it never actually quits the program
         sys

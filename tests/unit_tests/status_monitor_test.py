@@ -232,7 +232,6 @@ def test_validate_config(
     config, token, channel, workflow_name, include_extra_info, expect_error
 ):
     config_to_validate = config
-    config_to_validate["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
     config_to_validate["STATUS_MONITOR"]["CONFIG"] = {}
     if token:
         config_to_validate["STATUS_MONITOR"]["CONFIG"]["TOKEN"] = token
@@ -300,7 +299,6 @@ def test_format_status_info(slack_monitor_config, status_info: dict, expected_ou
 )
 def test__send_status(config, formatted_error_report):
     status_handler = ExampleStatusHandler(config)
-    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
     config["STATUS_MONITOR"]["CONFIG"] = {
         "TOKEN": "a token",
         "CHANNEL": "a channel",
@@ -331,7 +329,6 @@ def test__send_status(config, formatted_error_report):
 @pytest.mark.parametrize("include_extra_info", [False, True])
 def test_monitor_status(config, include_extra_info):
     status_handler = ExampleStatusHandler(config)
-    config["STATUS_MONITOR"]["TYPE"] = "SlackStatusMonitor"
     config["STATUS_MONITOR"]["CONFIG"] = {
         "TOKEN": "a token",
         "CHANNEL": "a channel",

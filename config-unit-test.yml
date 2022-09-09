@@ -6,19 +6,18 @@ TASK_SCHEDULER:  # configures: dane_workflows.task_scheduler
   BATCH_SIZE: 5  # number of items returned by DataProvider.get_next_batch
   BATCH_LIMIT: -1 # limit of batches to process (-1 for no limit)
   MONITOR_FREQ: -1  # after each n batches call the STATUS_MONITOR
+STATUS_HANDLER:
+  TYPE: dane_workflows.status.ExampleStatusHandler
+  BATCH_PREFIX: your_test  # used to track different iterations of DataProvider.get_next_batch
 DATA_PROVIDER:  # configures: ExampleDataProvider
-  TYPE: ExampleDataProvider
+  TYPE: dane_workflows.data_provider.ExampleDataProvider
   CONFIG: 
     SOURCE_BATCH_SIZE: 10
+PROC_ENV:
+  TYPE: dane_workflows.data_processing.ExampleDataProcessingEnvironment
 EXPORTER:
-  TYPE: ExampleExporter
-STATUS_HANDLER:
-  TYPE: ExampleStatusHandler
+  TYPE: dane_workflows.exporter.ExampleExporter
 STATUS_MONITOR:  # optional, for monitoring 
-  TYPE: ExampleStatusMonitor
+  TYPE: dane_workflows.status_monitor.ExampleStatusMonitor
   CONFIG:
     INCLUDE_EXTRA_INFO: False
-PROC_ENV:
-  TYPE: ExampleDataProcessingEnvironment
-  BATCH_PREFIX: your_test  # used to track different iterations of DataProvider.get_next_batch
-

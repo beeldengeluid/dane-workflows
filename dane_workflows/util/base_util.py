@@ -1,9 +1,88 @@
 import os
+import sys
+from argparse import ArgumentParser, Namespace
 import logging
-from logging.handlers import TimedRotatingFileHandler
 from yaml import load, FullLoader
 from yaml.scanner import ScannerError
 from pathlib import Path
+from importlib import import_module
+from typing import Optional, Tuple
+
+
+logger = logging.getLogger(__name__)
+LOG_FORMAT = "%(asctime)s|%(levelname)s|%(process)d|%(module)s|%(funcName)s|%(lineno)d|%(message)s"
+
+
+# Call this first thing in your main.py to extract the default CMD line options and config YAML
+def extract_exec_params() -> Optional[Tuple[dict, Namespace]]:
+    parser = ArgumentParser(description="DANE workflow")
+    parser.add_argument("--cfg", action="store", dest="cfg", default="config.yml")
+    parser.add_argument("--log", action="store", dest="loglevel", default="DEBUG")
+    parser.add_argument("--opt", action="store", dest="opt", default=None)
+    args = parser.parse_args()
+
+    # load the config and validate it
+    config = load_config_or_die(args.cfg)
+
+    # init the file logger
+    logger.info(f"Got the following CMD line arguments: {args}")
+    logger.info(f"Succesfully loaded & validated {args.cfg}")
+    return config, args
+
+
+# since the config is vital, it should be available
+def load_config_or_die(cfg_file: str):
+    logger.info(f"Going to load the following config: {cfg_file}")
+    try:
+        with open(cfg_file, "r") as yamlfile:
+            config = load(yamlfile, Loader=FullLoader)
+            if validate_config(config):
+                return config
+            else:
+                logger.critical(f"Config: {cfg_file} invalid, quitting")
+                sys.exit()
+    except (FileNotFoundError, ScannerError):
+        logger.exception(f"Not a valid file path or config file {cfg_file}")
+        sys.exit()
+
+
+def validate_config(config) -> bool:
+    try:
+        required_components = [
+            "LOGGING",
+            "TASK_SCHEDULER",
+            "STATUS_HANDLER",
+            "DATA_PROVIDER",
+            "PROC_ENV",
+            "EXPORTER",
+        ]
+        assert all(
+            component in config for component in required_components
+        ), f"Error one or more {required_components} missing in config"
+        # check if the optional status monitor is there
+        if "STATUS_MONITOR" in config:
+            required_components.append("STATUS_MONITOR")
+
+        # some components MUST have a TYPE defined
+        for component in required_components:
+            if component in ["TASK_SCHEDULER", "LOGGING"]:  # no TYPE needed for these
+                continue
+            assert "TYPE" in config[component], f"{component}.TYPE missing"
+
+        # finally test if the logger is properly configured
+        assert all(
+            [x in config["LOGGING"] for x in ["NAME", "DIR", "LEVEL"]]
+        ), "LOGGING.keys"
+        assert check_setting(config["LOGGING"]["LEVEL"], str), "LOGGING.LEVEL"
+        assert check_log_level(
+            config["LOGGING"]["LEVEL"]
+        ), "Invalid LOGGING.LEVEL defined"
+        assert check_setting(config["LOGGING"]["DIR"], str), "LOGGING.DIR"
+        validate_parent_dirs(config["LOGGING"]["DIR"])
+    except AssertionError:
+        logger.exception("Invalid config YAML")
+        return False
+    return True
 
 
 # returns the root of this repo by running "cd ../.." from this __file__ on
@@ -65,48 +144,34 @@ def validate_file_paths(paths: list):
         raise (e)
 
 
-def load_config(cfg_file):
-    try:
-        with open(cfg_file, "r") as yamlfile:
-            return load(yamlfile, Loader=FullLoader)
-    except (FileNotFoundError, ScannerError) as e:
-        print(e)
-    return None
+def get_parent_dir(path: str) -> Path:
+    return Path(path).parent
 
 
-def init_logger(config):
-    log_conf = config["LOGGING"]
-    logger = logging.getLogger(log_conf["NAME"])
-    logger.setLevel(log_conf["LEVEL"])
-    # create file handler which logs to file
-    if not os.path.exists(os.path.realpath(log_conf["DIR"])):
-        os.makedirs(os.path.realpath(log_conf["DIR"]), exist_ok=True)
-
-    fh = TimedRotatingFileHandler(
-        os.path.join(os.path.realpath(log_conf["DIR"]), "dane-workflows.log"),
-        when="W6",  # start new log on sunday
-        backupCount=3,
-    )
-    fh.setLevel(log_conf["LEVEL"])
-    # create console handler
-    ch = logging.StreamHandler()
-    ch.setLevel(log_conf["LEVEL"])
-    # create formatter and add it to the handlers
-    """
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S"
-    )
-    """
-    formatter = logging.Formatter(
-        "%(asctime)s|%(levelname)s|%(process)d|%(module)s|%(funcName)s|%(lineno)d|%(message)s"
-    )
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-    return logger
+# the parent dir of the configured directory has to exist for this to work
+def auto_create_dir(path: str) -> bool:
+    logger.info(f"Trying to automatically create dir: {path}")
+    if not os.path.exists(get_parent_dir(path)):
+        logger.error(
+            f"Error: cannot automatically create {path}; parent dir does not exist"
+        )
+        return False
+    if not os.path.exists(path):
+        logger.info(f"Dir: '{path}' does not exist, creating it...")
+        try:
+            os.makedirs(path)
+        except OSError:
+            logger.exception(f"OSError {path} could not be created...")
+            return False
+    return True
 
 
-def get_logger(config):
-    return logging.getLogger(config["LOGGING"]["NAME"])
+def import_dane_workflow_class(class_path: str):
+    tmp = class_path.split(".")
+    if len(tmp) < 2:  # always specify modulepath.class
+        logger.critical(f"Malconfigured module path: {class_path}")
+        sys.exit()
+    module_path = ".".join(tmp[:-1])
+    module = import_module(f"{module_path}")
+    workflow_class = getattr(module, tmp[-1])  # last element is the class name
+    return workflow_class

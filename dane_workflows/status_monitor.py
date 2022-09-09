@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 import sys
-
+import logging
 from slack_sdk import WebClient
 
 from dane_workflows.status import (
@@ -10,19 +10,15 @@ from dane_workflows.status import (
     ProcessingStatus,
     ErrorCode,
 )
-from dane_workflows.util.base_util import get_logger, check_setting, load_config
+from dane_workflows.util.base_util import check_setting, load_config_or_die
+
+
+logger = logging.getLogger(__name__)
 
 
 class StatusMonitor(ABC):
     def __init__(self, config: dict, status_handler: StatusHandler):
         self.status_handler = status_handler
-
-        # check if the configured TYPE is the same as the StatusMonitor being instantiated
-        if self.__class__.__name__ != config["STATUS_MONITOR"]["TYPE"]:
-            print("Malconfigured class instance")
-            sys.exit()
-
-        self.logger = get_logger(config)
         self.config = (
             config["STATUS_MONITOR"]["CONFIG"]
             if "CONFIG" in config["STATUS_MONITOR"]
@@ -31,24 +27,24 @@ class StatusMonitor(ABC):
 
         # enforce config validation
         if not self._validate_config():
-            self.logger.error("Malconfigured, quitting...")
+            logger.critical("Malconfigured, quitting...")
             sys.exit()
 
     def _validate_config(self) -> bool:
         """Check that the config contains the necessary parameters"""
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
 
         try:
             assert all(
                 [x in self.config for x in ["INCLUDE_EXTRA_INFO"]]
-            ), "STATUS_MONITOR.keys"
+            ), "StatusMonitor.INCLUDE_EXTRA_INFO missing"
 
             assert check_setting(
                 self.config["INCLUDE_EXTRA_INFO"], bool
-            ), "StatusMonitor.INCLUDE_EXTRA_INFO"
+            ), "StatusMonitor.INCLUDE_EXTRA_INFO not a bool"
 
         except AssertionError as e:
-            self.logger.error(f"Configuration error: {str(e)}")
+            logger.error(f"Configuration error: {str(e)}")
             return False
 
         return True
@@ -240,11 +236,12 @@ class SlackStatusMonitor(StatusMonitor):
 
     def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
-        self.logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.debug(f"Validating {self.__class__.__name__} config")
 
         if not StatusMonitor._validate_config(
             self
         ):  # if superclass validate fails, all fails
+            logger.error("StatusMonitor default config section not valid")
             return False
         else:
             try:
@@ -265,7 +262,7 @@ class SlackStatusMonitor(StatusMonitor):
                 ), "SlackStatusMonitor.WORKFLOW_NAME"
 
             except AssertionError as e:
-                self.logger.error(f"Configuration error: {str(e)}")
+                logger.error(f"Configuration error: {str(e)}")
                 return False
 
         return True
@@ -368,7 +365,7 @@ if __name__ == "__main__":
     """Call this to test your chosen StatusMonitor independently.
     It will then run on the status handler specified in the config"""
 
-    config = load_config(
+    config = load_config_or_die(
         "../config-example.yml"
     )  # TODO: how do we get this to work from within a workflow with the correct config?
     status_handler = ExampleStatusHandler(config)
