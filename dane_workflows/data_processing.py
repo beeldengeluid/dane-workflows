@@ -58,7 +58,7 @@ class DataProcessingEnvironment(ABC):
 
         # enforce config validation
         if not self._validate_config():
-            logger.error("Malconfigured, quitting...")
+            logger.critical("Malconfigured, quitting...")
             sys.exit()
 
     def _set_register_batch_failed(

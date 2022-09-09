@@ -96,7 +96,7 @@ class TaskScheduler(object):
                     self.config["TASK_SCHEDULER"]["MONITOR_FREQ"], int
                 ), "TASK_SCHEDULER.MONITOR_FREQ"
         except AssertionError as e:
-            print(f"Configuration error: {str(e)}")
+            logger.error(f"Configuration error: {str(e)}")
             return False
 
         return True
@@ -112,7 +112,7 @@ class TaskScheduler(object):
             self.data_provider
         )
         if source_batch_recovered is False:
-            logger.info(
+            logger.warning(
                 "Could not recover source_batch, so either the work was done or something is wrong with the DataProvider, quitting"
             )
             sys.exit()

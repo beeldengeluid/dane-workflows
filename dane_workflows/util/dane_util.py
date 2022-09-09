@@ -31,10 +31,26 @@ class TaskType(Enum):
 
 @unique
 class TaskState(Enum):
-    QUEUED = "102"  # means the task is queued (waiting for a worker to be freed up)
-    CREATED = "201"  # means the task was just created (before being queued)
-    SUCCESS = "200"  # means the task was successfully finished
-    ERROR = "500"  # means the task failed
+    QUEUED = "102"  # Task has been sent to a queue, it might be being worked on or held in queue.
+    SUCCESS = "200"  # Task completed successfully.
+    CREATED = "201"  # Task is registered, but has not been acted upon.
+    TASK_RESET = "205"  # Task reset state, typically after manual intervention
+    BAD_REQUEST = (
+        "400"  # Malformed request, typically the document or task description.
+    )
+    ACCESS_DENIED = "403"  # Access denied to underlying source material.
+    NOT_FOUND = "404"  # Underlying source material not found.
+    UNFINISHED_DEPENDENCY = "412"  # Task has a dependency which has not completed yet.
+    NO_ROUTE_TO_QUEUE = (
+        "422"  # If a task cannot be routed to a queue, this state is returned.
+    )
+    ERROR = (
+        "500"  # Error occurred during processing, details should be given in message.
+    )
+    ERROR_INVALID_INPUT = "502"  # Worker received invalid or partial input.
+    ERROR_PROXY = (
+        "503"  # Worker received an error response from a remote service it depends on.
+    )
 
 
 @dataclass

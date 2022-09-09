@@ -124,7 +124,7 @@ class StatusHandler(ABC):
 
         # enforce config validation
         if not self._validate_config():
-            logger.error("Malconfigured, quitting...")
+            logger.critical("Malconfigured, quitting...")
             sys.exit()
 
     """ ------------------------------------ ABSTRACT FUNCTIONS -------------------------------- """
@@ -434,7 +434,7 @@ class SQLiteStatusHandler(StatusHandler):
         super().__init__(config)
         self.DB_FILE: str = self.config["DB_FILE"]
         if self._init_database() is False:
-            logger.debug(f"Could not initialize the DB: {self.DB_FILE}")
+            logger.critical(f"Could not initialize the DB: {self.DB_FILE}")
             sys.exit()
 
     def _init_database(self):

@@ -39,7 +39,7 @@ def load_config_or_die(cfg_file: str):
             if validate_config(config):
                 return config
             else:
-                logger.info(f"Config: {cfg_file} invalid, quitting")
+                logger.critical(f"Config: {cfg_file} invalid, quitting")
                 sys.exit()
     except (FileNotFoundError, ScannerError):
         logger.exception(f"Not a valid file path or config file {cfg_file}")
@@ -166,13 +166,12 @@ def auto_create_dir(path: str) -> bool:
     return True
 
 
-def import_dane_workflow_module(module_path: str):
-    tmp = module_path.split(".")
-    if len(tmp) != 3:
-        logger.critical(f"Malconfigured module path: {module_path}")
+def import_dane_workflow_class(class_path: str):
+    tmp = class_path.split(".")
+    if len(tmp) < 2:  # always specify modulepath.class
+        logger.critical(f"Malconfigured module path: {class_path}")
         sys.exit()
-    # module = getattr(__import__(tmp[0]), tmp[1])
-    module = import_module(f"{tmp[0]}.{tmp[1]}")
-    workflow_class = getattr(module, tmp[2])
-    # globals()[tmp[2]] = workflow_class
+    module_path = ".".join(tmp[:-1])
+    module = import_module(f"{module_path}")
+    workflow_class = getattr(module, tmp[-1])  # last element is the class name
     return workflow_class
