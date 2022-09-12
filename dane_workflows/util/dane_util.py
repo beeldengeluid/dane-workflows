@@ -184,6 +184,8 @@ class DANEHandler:
             return query
         return tasks_query
 
+    # FIXME: in case the underlying tasks mentioned: "task already assigned", the results will
+    # NOT be found this way
     def _generate_results_of_batch_query(self, proc_batch_id, offset, size):
         logger.debug("Entering function")
         tasks_of_batch_query = self._generate_tasks_of_batch_query(
@@ -256,7 +258,7 @@ class DANEHandler:
             for hit in result["hits"]["hits"]:
                 all_results.append(self._to_result(hit))
             logger.debug(
-                f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
+                f"Done fetching all results for batch {self._get_proc_batch_name(proc_batch_id)}"
             )
             return self.get_results_of_batch(
                 proc_batch_id, all_results, offset + size, size

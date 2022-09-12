@@ -252,8 +252,19 @@ class DANEEnvironment(DataProcessingEnvironment):
         logger.debug(
             f"Asking DANEEnvironment for results of proc_batch {proc_batch_id}"
         )
+
+        # NOTE results may be empty in case the tasks were already done
         results_of_batch = self.dane_handler.get_results_of_batch(proc_batch_id, [])
         tasks_of_batch = self.dane_handler.get_tasks_of_batch(proc_batch_id, [])
+
+        logger.debug("Results of batch as follows:")
+        logger.debug(results_of_batch)
+        logger.debug("Tasks of batch as follows:")
+        logger.debug(tasks_of_batch)
+
+        if len(results_of_batch) == 0:
+            logger.warning(f"No results found for proc_batch_id {proc_batch_id}")
+            return None
 
         # convert the DANE Tasks and Results into ProcessingResults
         return self._to_processing_results(
@@ -282,15 +293,22 @@ class DANEEnvironment(DataProcessingEnvironment):
         # now convert the Result objects to ProcessingResult objects
         processing_results = []
         proc_id_to_result = {result.doc_id: result for result in results_of_batch}
+        logger.debug("proc_id to result mapping as follows:")
+        logger.debug(proc_id_to_result)
         for row in status_rows:
             row.status = ProcessingStatus.RESULTS_FETCHED  # update the status
-            processing_results.append(  # and add a processing result
-                ProcessingResult(
-                    row,
-                    proc_id_to_result[row.proc_id].payload,
-                    proc_id_to_result[row.proc_id].generator,
+            if row.proc_id in proc_id_to_result:
+                processing_results.append(  # and add a processing result
+                    ProcessingResult(
+                        row,
+                        proc_id_to_result[row.proc_id].payload,
+                        proc_id_to_result[row.proc_id].generator,
+                    )
                 )
-            )
+            else:
+                logger.warning(
+                    f"{row.proc_id} not found in DANE results, perhaps the parent task {result.task_id} was bounced"
+                )
         return processing_results
 
     # Converts list of Task objects into StatusRows
