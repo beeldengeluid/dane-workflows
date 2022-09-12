@@ -112,8 +112,8 @@ class DataProcessingEnvironment(ABC):
 
     def fetch_results_of_batch(self, proc_batch_id: int):
         results = self._fetch_results_of_batch(proc_batch_id)
-        if results is None:
-            logger.warning(
+        if not results:  # empty or None is always bad
+            logger.error(
                 f"Error obtaining ProcessingResults for proc_batch {proc_batch_id}"
             )
             return None
@@ -257,14 +257,8 @@ class DANEEnvironment(DataProcessingEnvironment):
         results_of_batch = self.dane_handler.get_results_of_batch(proc_batch_id, [])
         tasks_of_batch = self.dane_handler.get_tasks_of_batch(proc_batch_id, [])
 
-        logger.debug("Results of batch as follows:")
-        logger.debug(results_of_batch)
-        logger.debug("Tasks of batch as follows:")
-        logger.debug(tasks_of_batch)
-
-        if len(results_of_batch) == 0:
-            logger.warning(f"No results found for proc_batch_id {proc_batch_id}")
-            return None
+        logger.debug(f"Number of  found: {len(results_of_batch)}")
+        logger.debug(f"Number of tasks found: {len(tasks_of_batch)}")
 
         # convert the DANE Tasks and Results into ProcessingResults
         return self._to_processing_results(
@@ -279,10 +273,16 @@ class DANEEnvironment(DataProcessingEnvironment):
         tasks_of_batch: List[Task],
     ) -> Optional[List[ProcessingResult]]:
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
-        if status_rows is None or tasks_of_batch is None:
-            logger.warning(
-                f"tasks_of_batch({tasks_of_batch is None}) or status_rows({status_rows is None}) is empty"
-            )
+        if not status_rows:
+            logger.error(f"No status_rows found for proc_batch_id {proc_batch_id}")
+            return None
+
+        if not results_of_batch:
+            logger.error(f"No results found for proc_batch_id {proc_batch_id}")
+            return None
+
+        if not tasks_of_batch:
+            logger.error(f"No tasks found for proc_batch_id {proc_batch_id}")
             return None
 
         # First assign the doc_id, i.e. proc_id, to each processing result via the list of tasks
@@ -293,8 +293,6 @@ class DANEEnvironment(DataProcessingEnvironment):
         # now convert the Result objects to ProcessingResult objects
         processing_results = []
         proc_id_to_result = {result.doc_id: result for result in results_of_batch}
-        logger.debug("proc_id to result mapping as follows:")
-        logger.debug(proc_id_to_result)
         for row in status_rows:
             row.status = ProcessingStatus.RESULTS_FETCHED  # update the status
             if row.proc_id in proc_id_to_result:

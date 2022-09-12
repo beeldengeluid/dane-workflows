@@ -404,41 +404,51 @@ class DANEHandler:
         )
 
     # TODO avoid persisting this JSON response in StatusRow.proc_status_msg
-    def __parse_dane_process_response(self, resp_data: str) -> str:
+    def __parse_dane_process_response(self, dane_resp: str) -> str:
         logger.debug("Parsing DANE response (TODO)")
-        logger.debug(resp_data)
-        """
-        {
-            "success": [],
-            "failed": [
-                {
-                    "document_id": "7976d2fe40f880c3e074c743c881ef5763ad342c",
-                    "error": "Task `BG_DOWNLOAD` already assigned to document `7976d2fe40f880c3e074c743c881ef5763ad342c`"
-                },
-                {
-                    "document_id": "7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c",
-                    "error": "Task `BG_DOWNLOAD` already assigned to document `7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c`"
-                }
-            ]
-        }
+        logger.debug(dane_resp)
 
-        OF
+        # treat the errors as warnings, since some of them don't cause harm (see below)
+        errors = self._extract_errors_from_dane_resp(dane_resp)
+        for e in errors:
+            logger.warning(e)
 
-        {
-            "success": [],
-            "failed": [
-                {
-                    "document_id": "8836ececa6242d1033480cb4f749da752fdcf26d",
-                    "error": "[404] 'No document with id `d035d6e713a151f3d94ce41a780068769f31bd11` found'"
-                },
-                {
-                    "document_id": "d035d6e713a151f3d94ce41a780068769f31bd11",
-                    "error": "[404] 'No document with id `d035d6e713a151f3d94ce41a780068769f31bd11` found'"
-                }
-            ]
-        }
-        """
-        return resp_data
+        return dane_resp
+
+    """
+    This function extracts the errors from DANE responses, so they can be logged 
+    NOTE: example responses returned by DANE
+    {
+        "success": [],
+        "failed": [
+            {
+                "document_id": "7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c",
+                "error": "Task `BG_DOWNLOAD` already assigned to document `7b1dcc4147fafb1cc089ca9d0ee46d382727cf1c`"
+            }
+        ]
+    }
+
+    {
+        "success": [],
+        "failed": [
+            {
+                "document_id": "d035d6e713a151f3d94ce41a780068769f31bd11",
+                "error": "[404] 'No document with id `d035d6e713a151f3d94ce41a780068769f31bd11` found'"
+            }
+        ]
+    }
+    """
+    def _extract_errors_from_dane_resp(self, dane_resp: str) -> List[str]:
+        logger.info("Extracting error messages from DANE response")
+        errors = []
+        try:
+            data = json.loads(dane_resp)
+            for msg in data.get("failed", []):
+                if "error" in msg:
+                    errors.append(msg["error"])
+        except json.JSONDecodeError as e:
+            logger.exception(e)
+        return errors
 
     # returns a list of DANE Tasks when done
     # TODO now only the "leaf" task type is monitored (e.g. ASR)
@@ -537,6 +547,8 @@ class DANEHandler:
 
         logger.info(f"Number of UNKNOWN tasks: {c_unknown}")
 
+    # NOTE: DANE will create a new document if the target_id + creator_id does not exist,
+    # meaning it's important to assign a unique DANE_BATCH_PREFIX for each DANE env/server (API)
     def _to_dane_docs(self, status_rows: List[StatusRow]) -> Optional[List[dict]]:
         logger.debug("Entering function")
         if not status_rows or len(status_rows) == 0:
