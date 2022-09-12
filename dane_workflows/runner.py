@@ -6,6 +6,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# This function takes the complexity of configuring a TaskScheduler away from the library user
+# A user can simply import this module's function to spin up a workflow with a config
 def construct_task_scheduler(config) -> TaskScheduler:
     return TaskScheduler(
         config,

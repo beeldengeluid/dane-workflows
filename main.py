@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 if __name__ == "__main__":
-    logger.info("Let's go people")
+    logger.info("Starting example workflow")
     config, cmd_args = extract_exec_params()
 
     # setting the loglevel
@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     # insert custom behaviour e.g. before running the workflow
     if cmd_args.opt == "anything-you-like":
-        logger.info("Well I never!")
+        logger.info(f"Executing custom code block using --opt={cmd_args.opt}")
 
     # obtain the runner, i.e. TaskScheduler
     runner = construct_task_scheduler(config)

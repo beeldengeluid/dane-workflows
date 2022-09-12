@@ -290,22 +290,6 @@ class DANEHandler:
         )
 
     """
-    # NOTE: copied from old script
-    def _get_result_of_task(self, task_id: str):
-        query = {"query": {"parent_id": {"type": "result", "id": task_id}}}
-        resp = self.DANE_ES.search(query, self.config["ELASTICSEARCH"]["index"])
-        # print(json.dumps(resp, indent=4, sort_keys=True))
-        if "hits" in resp and len(resp["hits"]) == 1:
-            hit = resp["hits"][0]
-            if "result" not in hit["_source"]:
-                print("No source in result hit?")
-                return None
-            return hit["_source"]["result"] if "result" in hit["_source"] else None
-        print("No hits for result")
-        return None
-    """
-
-    """
     -------------------------------- PUBLIC FUNCTIONS ---------------------
     """
 

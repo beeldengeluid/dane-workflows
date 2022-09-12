@@ -65,8 +65,8 @@ class StatusMonitor(ABC):
         last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
         last_source_batch_id = self.status_handler.get_last_source_batch_id()
 
-        print(f"LAST PROC BATCH {last_proc_batch_id}")
-        print(f"LAST SOURCE BATCH {last_source_batch_id}")
+        logger.debug(f"LAST PROC BATCH {last_proc_batch_id}")
+        logger.debug(f"LAST SOURCE BATCH {last_source_batch_id}")
 
         return {
             # get last batch processed
@@ -219,10 +219,10 @@ class ExampleStatusMonitor(StatusMonitor):
         - formatted_error_report - Optional: a string containing the formatted error report
         Returns:
         """
-        print("STATUS INFO:")
-        print(formatted_status)
-        print("DETAILED ERROR REPORT:")
-        print(formatted_error_report)
+        logger.debug("STATUS INFO:")
+        logger.debug(formatted_status)
+        logger.debug("DETAILED ERROR REPORT:")
+        logger.debug(formatted_error_report)
 
     def monitor_status(self):
         """Retrieves the status and error information and communicates this via the terminal"""
