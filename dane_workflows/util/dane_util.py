@@ -171,7 +171,12 @@ class DANEHandler:
                             "query": match_creator_query,
                         }
                     },
-                    {"exists": {"field": "task.key"}},
+                    {
+                        "query_string": {
+                            "default_field": "task.key",
+                            "query": self.DANE_TASK_ID,
+                        }
+                    },
                 ]
             }
         }
@@ -438,6 +443,7 @@ class DANEHandler:
         ]
     }
     """
+
     def _extract_errors_from_dane_resp(self, dane_resp: str) -> List[str]:
         logger.info("Extracting error messages from DANE response")
         errors = []
