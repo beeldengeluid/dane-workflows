@@ -478,6 +478,7 @@ class DANEHandler:
             return tasks_of_batch
         else:
             logger.debug("Not done yet, monitoring some more")
+            # if this takes too long a max recursion depth error will occur...
             return self.monitor_batch(proc_batch_id, verbose)
 
     # Check if all tasks with proc_batch_id are done running
