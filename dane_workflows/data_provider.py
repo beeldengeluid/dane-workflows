@@ -27,7 +27,7 @@ class DataProvider(ABC):
     ):
 
         self.config = config["DATA_PROVIDER"]["CONFIG"]
-        logger.debug("intialising DATA PROVIDER")
+        logger.info("intialising DATA PROVIDER")
         self.status_handler = status_handler
 
         # enforce config validation
@@ -95,7 +95,7 @@ class DataProvider(ABC):
                 )
                 return None
 
-        logger.debug(f"Continuing with {len(unprocessed)} unprocessed items")
+        logger.info(f"Continuing with {len(unprocessed)} unprocessed items")
 
         # 3. assign the proc_batch_id to the unprocessed[0:batch_size]
         self.status_handler.persist(
@@ -116,7 +116,7 @@ class ExampleDataProvider(DataProvider):
 
         # either set dummy data OR data provided via self.config["DATA"]
         self.data = [{"id": str(uuid4()), "url": f"https://{x}"} for x in range(0, 100)]
-        logger.debug(self.config.get("DATA", None))
+        logger.info(self.config.get("DATA", None))
         if self.config.get("DATA", None) is not None:
             logger.info(f"Setting {len(self.config['DATA'])} of custom items")
             self.data = self.config["DATA"]
@@ -127,7 +127,7 @@ class ExampleDataProvider(DataProvider):
         self.SOURCE_BATCH_SIZE: int = self.config["SOURCE_BATCH_SIZE"]
 
     def _validate_config(self) -> bool:
-        logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.info(f"Validating {self.__class__.__name__} config")
         try:
             assert (
                 "SOURCE_BATCH_SIZE" in self.config
@@ -180,8 +180,8 @@ class ExampleDataProvider(DataProvider):
                     proc_error_code=None,
                 )
             )
-        logger.debug("fetched source batch data")
-        # logger.debug(batch_data)
+        logger.info("fetched source batch data")
+        # logger.info(batch_data)
         return batch_data
 
 

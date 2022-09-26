@@ -32,7 +32,7 @@ class StatusMonitor(ABC):
 
     def _validate_config(self) -> bool:
         """Check that the config contains the necessary parameters"""
-        logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.info(f"Validating {self.__class__.__name__} config")
 
         try:
             assert all(
@@ -65,8 +65,8 @@ class StatusMonitor(ABC):
         last_proc_batch_id = self.status_handler.get_last_proc_batch_id()
         last_source_batch_id = self.status_handler.get_last_source_batch_id()
 
-        logger.debug(f"LAST PROC BATCH {last_proc_batch_id}")
-        logger.debug(f"LAST SOURCE BATCH {last_source_batch_id}")
+        logger.info(f"LAST PROC BATCH {last_proc_batch_id}")
+        logger.info(f"LAST SOURCE BATCH {last_source_batch_id}")
 
         return {
             # get last batch processed
@@ -219,10 +219,10 @@ class ExampleStatusMonitor(StatusMonitor):
         - formatted_error_report - Optional: a string containing the formatted error report
         Returns:
         """
-        logger.debug("STATUS INFO:")
-        logger.debug(formatted_status)
-        logger.debug("DETAILED ERROR REPORT:")
-        logger.debug(formatted_error_report)
+        logger.info("STATUS INFO:")
+        logger.info(formatted_status)
+        logger.info("DETAILED ERROR REPORT:")
+        logger.info(formatted_error_report)
 
     def monitor_status(self):
         """Retrieves the status and error information and communicates this via the terminal"""
@@ -239,7 +239,7 @@ class SlackStatusMonitor(StatusMonitor):
 
     def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
-        logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.info(f"Validating {self.__class__.__name__} config")
 
         if not StatusMonitor._validate_config(
             self

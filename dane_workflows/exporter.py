@@ -47,10 +47,10 @@ class ExampleExporter(Exporter):
         if not results:
             logger.warning("Received no results for export")
             return False
-        logger.debug(f"Received {len(results)} results to be exported")
+        logger.info(f"Received {len(results)} results to be exported")
         status_rows = [result.status_row for result in results]
-        logger.debug("grab status rows from results")
-        logger.debug(status_rows)
+        logger.info("Status rows taken from results:")
+        logger.info(status_rows)
         self.status_handler.persist(  # everything is exported properly
             self.status_handler.update_status_rows(
                 status_rows, status=ProcessingStatus.FINISHED

@@ -109,11 +109,11 @@ class DANEHandler:
         fn = os.path.join(
             self.STATUS_DIR, f"{self._get_proc_batch_name(proc_batch_id)}.json"
         )
-        logger.debug(f"{proc_batch_id} --> filename: {fn}")
+        logger.info(f"{proc_batch_id} --> filename: {fn}")
         return fn
 
     def _load_batch_file(self, proc_batch_id) -> Optional[dict]:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         try:
             return json.load(open(self._get_batch_file_name(proc_batch_id)))
         except Exception:
@@ -124,7 +124,7 @@ class DANEHandler:
 
     # use to feed _add_tasks_to_batch()
     def _get_doc_ids_of_batch(self, proc_batch_id: int) -> Optional[List[str]]:
-        logger.debug(
+        logger.info(
             f"Get DANE doc IDs for proc_batch: {self._get_proc_batch_name(proc_batch_id)}"
         )
         batch_data = self._load_batch_file(proc_batch_id)
@@ -147,7 +147,7 @@ class DANEHandler:
     def _generate_tasks_of_batch_query(
         self, proc_batch_id: int, offset: int, size: int, base_query=True
     ) -> dict:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         match_creator_query = {
             "bool": {
                 "must": [
@@ -192,7 +192,7 @@ class DANEHandler:
     # FIXME: in case the underlying tasks mentioned: "task already assigned", the results will
     # NOT be found this way
     def _generate_results_of_batch_query(self, proc_batch_id, offset, size):
-        logger.debug("Entering function")
+        logger.info("Entering function")
         tasks_of_batch_query = self._generate_tasks_of_batch_query(
             proc_batch_id, offset, size, False
         )
@@ -236,7 +236,7 @@ class DANEHandler:
         else:
             for hit in result["hits"]["hits"]:
                 all_tasks.append(self._to_task(hit))
-            logger.debug(
+            logger.info(
                 f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
             )
             return self.get_tasks_of_batch(
@@ -246,8 +246,8 @@ class DANEHandler:
     def get_results_of_batch(
         self, proc_batch_id: int, all_results: List[Result], offset=0, size=200
     ) -> List[Result]:
-        logger.debug("Entering function")
-        logger.debug(
+        logger.info("Entering function")
+        logger.info(
             f"Fetching results of proc_batch: {self._get_proc_batch_name(proc_batch_id)} from DANE index"
         )
         query = self._generate_results_of_batch_query(proc_batch_id, offset, size)
@@ -262,7 +262,7 @@ class DANEHandler:
         else:
             for hit in result["hits"]["hits"]:
                 all_results.append(self._to_result(hit))
-            logger.debug(
+            logger.info(
                 f"Done fetching all results for batch {self._get_proc_batch_name(proc_batch_id)}"
             )
             return self.get_results_of_batch(
@@ -271,7 +271,7 @@ class DANEHandler:
 
     # TODO check out if DANE.TASK.from_json also works well instead of this dataclass
     def _to_task(self, es_hit: dict) -> Task:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         return Task(
             es_hit["_id"],
             es_hit["_source"]["task"]["msg"],
@@ -285,7 +285,7 @@ class DANEHandler:
 
     # TODO check out if DANE.TASK.from_json also works well instead of this dataclass
     def _to_result(self, es_hit: dict) -> Result:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         return Result(
             es_hit["_id"],
             es_hit["_source"]["result"]["generator"],
@@ -303,8 +303,8 @@ class DANEHandler:
     def register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        logger.debug("Entering function")
-        logger.debug(f"Trying to insert {len(batch)} documents")
+        logger.info("Entering function")
+        logger.info(f"Trying to insert {len(batch)} documents")
         dane_docs = self._to_dane_docs(batch)
         r = requests.post(self.DANE_DOCS_ENDPOINT, data=json.dumps(dane_docs))
         if r.status_code == 200:
@@ -326,7 +326,7 @@ class DANEHandler:
     def _to_updated_status_rows(
         self, batch: List[StatusRow], dane_resp: dict
     ) -> List[StatusRow]:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         if dane_resp is None:
             logger.warning("DANE response was empty")
             return None
@@ -349,7 +349,7 @@ class DANEHandler:
     def __extract_docs_by_state(
         self, dane_api_resp: dict, state: DANEBatchState
     ) -> List[Document]:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         if dane_api_resp.get(state.value, None) is None:
             return []
 
@@ -363,7 +363,7 @@ class DANEHandler:
     # converts JSON data (part of DANE API response) into DANE Documents
     # TODO make sure to fix irregular JSON data in DANE core library
     def __to_dane_doc(self, json_data: dict) -> Optional[Document]:
-        logger.debug(f"Converting JSON to DANE Document {json_data}")
+        logger.info(f"Converting JSON to DANE Document {json_data}")
         if json_data is None:
             logger.warning("No json_data supplied")
             return None
@@ -373,8 +373,8 @@ class DANEHandler:
         return Document.from_json(doc) if doc and doc.get("_id") is not None else None
 
     def _persist_registered_batch(self, proc_batch_id: int, dane_resp: dict) -> bool:
-        logger.debug("Persisting DANE API response to disk")
-        logger.debug(dane_resp)
+        logger.info("Persisting DANE API response to disk")
+        logger.info(dane_resp)
         try:
             with open(self._get_batch_file_name(proc_batch_id), "w") as f:
                 f.write(json.dumps(dane_resp, indent=4, sort_keys=True))
@@ -386,9 +386,9 @@ class DANEHandler:
     # called by DANEProcessingEnvironment.process_batch()
     def process_batch(self, proc_batch_id: int) -> Tuple[bool, int, str]:
         task_type = TaskType(self.DANE_TASK_ID)
-        logger.debug(f"going to submit {task_type.value} for the following doc IDs")
+        logger.info(f"going to submit {task_type.value} for the following doc IDs")
         doc_ids = self._get_doc_ids_of_batch(proc_batch_id)
-        logger.debug(doc_ids)
+        logger.info(doc_ids)
         if doc_ids is None:
             return (
                 False,
@@ -399,7 +399,7 @@ class DANEHandler:
             "document_id": doc_ids,
             "key": task_type.value,  # e.g. ASR, DOWNLOAD
         }
-        logger.debug(f"Submitting the following to {self.DANE_TASK_ENDPOINT}")
+        logger.info(f"Submitting task to {self.DANE_TASK_ENDPOINT}")
         logger.debug(json.dumps(task))
         r = requests.post(self.DANE_TASK_ENDPOINT, data=json.dumps(task))
         return (
@@ -410,8 +410,8 @@ class DANEHandler:
 
     # TODO avoid persisting this JSON response in StatusRow.proc_status_msg
     def __parse_dane_process_response(self, dane_resp: str) -> str:
-        logger.debug("Parsing DANE response (TODO)")
-        logger.debug(dane_resp)
+        logger.info("Parsing DANE response (TODO)")
+        logger.info(dane_resp)
 
         # treat the errors as warnings, since some of them don't cause harm (see below)
         errors = self._extract_errors_from_dane_resp(dane_resp)
@@ -421,7 +421,7 @@ class DANEHandler:
         return dane_resp
 
     """
-    This function extracts the errors from DANE responses, so they can be logged 
+    This function extracts the errors from DANE responses, so they can be logged
     NOTE: example responses returned by DANE
     {
         "success": [],
@@ -460,11 +460,11 @@ class DANEHandler:
     # TODO now only the "leaf" task type is monitored (e.g. ASR)
     # the other tasks are ignored
     def monitor_batch(self, proc_batch_id: int, verbose=False) -> List[Task]:
-        logger.debug(f"\t\tMonitoring DANE batch: {proc_batch_id}")
+        logger.info(f"\t\tMonitoring DANE batch: {proc_batch_id}")
         tasks_of_batch = self.get_tasks_of_batch(proc_batch_id, [])
         task_type = TaskType(self.DANE_TASK_ID)
-        logger.debug(f"Found {len(tasks_of_batch)} tasks")
-        logger.debug("*" * 50)
+        logger.info(f"Found {len(tasks_of_batch)} tasks")
+        logger.info("*" * 50)
 
         # log the raw JSON status of ALL tasks (verbose only)
         status_overview = self._generate_tasks_overview(tasks_of_batch)
@@ -472,24 +472,24 @@ class DANEHandler:
             self._log_all_tasks_verbose(status_overview)
 
         # log a status overview per (type of) dane_task (e.g. ASR, DOWNLOAD, etc)
-        logger.debug(f"Reporting on the {task_type.value} task")
+        logger.info(f"Reporting on the {task_type.value} task")
         self._log_status_of_dane_task_type(status_overview, task_type)
 
         # TODO report and work on the dictionary with statusses to return
-        logger.debug(f"Waiting for {self.MONITOR_INTERVAL} seconds")
+        logger.info(f"Waiting for {self.MONITOR_INTERVAL} seconds")
         sleep(self.MONITOR_INTERVAL)
-        logger.debug("-" * 50)
+        logger.info("-" * 50)
         if self._contains_running_tasks(tasks_of_batch) is False:
-            logger.debug(f"All done, returning with {tasks_of_batch}")
+            logger.info(f"All done, returning with {tasks_of_batch}")
             return tasks_of_batch
         else:
-            logger.debug("Not done yet, monitoring some more")
+            logger.info("Not done yet, monitoring some more")
             # if this takes too long a max recursion depth error will occur...
             return self.monitor_batch(proc_batch_id, verbose)
 
     # Check if all tasks with proc_batch_id are done running
     def is_proc_batch_done(self, proc_batch_id: int) -> bool:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         return (
             self._contains_running_tasks(self.get_tasks_of_batch(proc_batch_id, []))
             is False
@@ -497,9 +497,9 @@ class DANEHandler:
 
     # Check if all supplied tasks have (un)successfully run
     def _contains_running_tasks(self, tasks_of_batch: List[Task]) -> bool:
-        logger.debug("Entering function")
-        logger.debug("Any running tasks here?")
-        logger.debug(tasks_of_batch)
+        logger.info("Entering function")
+        logger.info("Any running tasks here?")
+        logger.info(tasks_of_batch)
         if tasks_of_batch is None:
             logger.warning("Called with tasks_of_batch is None")
             return False
@@ -515,7 +515,7 @@ class DANEHandler:
     #   }
     # }
     def _generate_tasks_overview(self, tasks_of_batch: List[Task]) -> dict:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         status_overview: dict = {}
         for t in tasks_of_batch:
             task_state = f"{t.state}"
@@ -534,11 +534,11 @@ class DANEHandler:
         return status_overview
 
     def _log_all_tasks_verbose(self, status_overview: dict):
-        logger.debug("Entering function")
+        logger.info("Entering function")
         logger.debug(json.dumps(status_overview, indent=4, sort_keys=True))
 
     def _log_status_of_dane_task_type(self, status_overview, dane_task: TaskType):
-        logger.debug(
+        logger.info(
             f"Showing all processing states for current DANE batch for all tasks of type: {dane_task.value}"
         )
         states = status_overview.get(dane_task.value, {}).get("states", {})
@@ -557,7 +557,7 @@ class DANEHandler:
     # NOTE: DANE will create a new document if the target_id + creator_id does not exist,
     # meaning it's important to assign a unique DANE_BATCH_PREFIX for each DANE env/server (API)
     def _to_dane_docs(self, status_rows: List[StatusRow]) -> Optional[List[dict]]:
-        logger.debug("Entering function")
+        logger.info("Entering function")
         if not status_rows or len(status_rows) == 0:
             logger.warning("No data provided")
             return None

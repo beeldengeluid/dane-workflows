@@ -182,7 +182,7 @@ class TaskScheduler(object):
 
             # optionally, monitor the status
             if self.status_monitor:
-                logger.debug(
+                logger.info(
                     f"check wether or not to monitor to slack: proc_batch_id: {proc_batch_id}, monitor_freq:{self.MONITOR_FREQ}, monitor: {proc_batch_id % self.MONITOR_FREQ}"
                 )
                 if proc_batch_id % self.MONITOR_FREQ == 0:

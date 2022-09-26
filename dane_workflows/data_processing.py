@@ -161,7 +161,7 @@ class DANEEnvironment(DataProcessingEnvironment):
         self.dane_handler = DANEHandler(self.config)
 
     def _validate_config(self):
-        logger.debug(f"Validating {self.__class__.__name__} config")
+        logger.info(f"Validating {self.__class__.__name__} config")
         try:
             assert all(
                 [
@@ -222,12 +222,12 @@ class DANEEnvironment(DataProcessingEnvironment):
     def _register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        logger.debug(f"Calling DANEHandler to register proc_batch: {proc_batch_id}")
+        logger.info(f"Calling DANEHandler to register proc_batch: {proc_batch_id}")
         return self.dane_handler.register_batch(proc_batch_id, batch)
 
     # tells DANE to start processing Task=self.TASK_ID on registered docs
     def _process_batch(self, proc_batch_id: int) -> ProcEnvResponse:
-        logger.debug(
+        logger.info(
             f"Calling DANEHandler to start processing proc_batch: {proc_batch_id}"
         )
         success, status_code, response_text = self.dane_handler.process_batch(
@@ -238,7 +238,7 @@ class DANEEnvironment(DataProcessingEnvironment):
 
     # When finished returns a list of updated StatusRows
     def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
-        logger.debug(f"Monitoring DANE batch #{proc_batch_id}")
+        logger.info(f"Monitoring DANE batch #{proc_batch_id}")
         tasks_of_batch = self.dane_handler.monitor_batch(
             proc_batch_id, False  # no verbose output
         )
@@ -249,16 +249,14 @@ class DANEEnvironment(DataProcessingEnvironment):
     def _fetch_results_of_batch(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
-        logger.debug(
-            f"Asking DANEEnvironment for results of proc_batch {proc_batch_id}"
-        )
+        logger.info(f"Asking DANEEnvironment for results of proc_batch {proc_batch_id}")
 
         # NOTE results may be empty in case the tasks were already done
         results_of_batch = self.dane_handler.get_results_of_batch(proc_batch_id, [])
         tasks_of_batch = self.dane_handler.get_tasks_of_batch(proc_batch_id, [])
 
-        logger.debug(f"Number of  found: {len(results_of_batch)}")
-        logger.debug(f"Number of tasks found: {len(tasks_of_batch)}")
+        logger.info(f"Number of  found: {len(results_of_batch)}")
+        logger.info(f"Number of tasks found: {len(tasks_of_batch)}")
 
         # convert the DANE Tasks and Results into ProcessingResults
         return self._to_processing_results(
@@ -339,7 +337,7 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
     def _register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        logger.debug(f"Registering (example) proc_batch: {proc_batch_id}")
+        logger.info(f"Registering (example) proc_batch: {proc_batch_id}")
         for row in batch:
             row.proc_id = str(uuid4())  # processing ID in processing env
             row.status = ProcessingStatus.BATCH_REGISTERED
@@ -347,12 +345,12 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
 
     # normally calls an external system to start processing, now just returns it's all good
     def _process_batch(self, proc_batch_id: int) -> ProcEnvResponse:
-        logger.debug(f"Processing (example) proc_batch: {proc_batch_id}")
+        logger.info(f"Processing (example) proc_batch: {proc_batch_id}")
         return ProcEnvResponse(True, 200, "All fine n dandy")
 
     # pretends that within 3 seconds the whole batch was successfully processed
     def _monitor_batch(self, proc_batch_id: int) -> Optional[List[StatusRow]]:
-        logger.debug(f"Monitoring (example) batch: {proc_batch_id}")
+        logger.info(f"Monitoring (example) batch: {proc_batch_id}")
         status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
         if status_rows is not None:
             for row in status_rows:
@@ -365,7 +363,7 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
     def _fetch_results_of_batch(
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
-        logger.debug(
+        logger.info(
             f"Asking (example) proc env for results of proc_batch {proc_batch_id}"
         )
         # just fetch the StatusRows, update their statusses and convert them into ProcessingResults
