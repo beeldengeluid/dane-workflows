@@ -125,6 +125,7 @@ class TaskScheduler(object):
             logger.info("Synchronizing last proc_batch with ProcessingEnvironment")
 
             # determine where to resume processing by looking at the highest step in the chain
+            # TODO maybe it's better to use the LOWEST step of the batch
             highest_proc_stat = 0
             for row in last_proc_batch:
                 if row.status == ProcessingStatus.ERROR:  # skip errors
@@ -198,7 +199,7 @@ class TaskScheduler(object):
         )
         return self.data_provider.get_next_batch(proc_batch_id, batch_size)
 
-    def _check_batch_limit(self, proc_batch_id):
+    def _check_batch_limit(self, proc_batch_id: int):
         if self.BATCH_LIMIT >= 0:
             if proc_batch_id >= self.BATCH_LIMIT:
                 logger.info(
@@ -319,3 +320,26 @@ class TaskScheduler(object):
 
         logger.info(f"Successfully exported proc_batch {proc_batch_id} output")
         return True
+
+    """ ------------ FUNCTIONS TO TRIGGER PARTS OF THE WORKFLOW WITHOUT KEEPING STATUS -------------- """
+
+    # use this to fetch a single processing result of a known target_id
+    def trigger_fetch_result_single_target_id(
+        self, target_id: str
+    ) -> Optional[ProcessingResult]:
+        logger.info(f"Looking for a processing result for: {target_id}")
+        processing_result = self.data_processing_env.fetch_result_of_target_id(
+            target_id
+        )
+        logger.info(f"Found a processing result: {processing_result is not None}")
+        return processing_result
+
+    # use this to export the results of a know target_id (that should have processing results ready)
+    def trigger_export_single_target_id(self, target_id: str) -> bool:
+        logger.info(f"Triggering export for: {target_id}")
+        processing_result = self.trigger_fetch_result_single_target_id(target_id)
+        if processing_result:
+            logger.info("Found processing data: passing it to the exporter...")
+            return self.exporter.export_results([processing_result])
+        logger.error(f"Cannot export: no processing result found for: {target_id}")
+        return False
