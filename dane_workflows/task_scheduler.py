@@ -125,6 +125,7 @@ class TaskScheduler(object):
             logger.info("Synchronizing last proc_batch with ProcessingEnvironment")
 
             # determine where to resume processing by looking at the highest step in the chain
+            # TODO maybe it's better to use the LOWEST step of the batch
             highest_proc_stat = 0
             for row in last_proc_batch:
                 if row.status == ProcessingStatus.ERROR:  # skip errors
@@ -198,7 +199,7 @@ class TaskScheduler(object):
         )
         return self.data_provider.get_next_batch(proc_batch_id, batch_size)
 
-    def _check_batch_limit(self, proc_batch_id):
+    def _check_batch_limit(self, proc_batch_id: int):
         if self.BATCH_LIMIT >= 0:
             if proc_batch_id >= self.BATCH_LIMIT:
                 logger.info(

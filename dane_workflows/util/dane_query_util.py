@@ -4,12 +4,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+"""
+TODO integrate this into these PR's (for DANE and DANE-server):
+- https://github.com/CLARIAH/DANE/pull/16
+- https://github.com/CLARIAH/DANE-server/pull/5
+
+After these PRs are merged: get rid of this module and adapt the dane_util.py
+to call the new DANE API functions instead 
+"""
+
+
 # query for fetching the result of a certain task
 def result_of_task_query(task_id: str):
     logger.debug("Generating result_of_task_query")
     return {"query": {"parent_id": {"type": "result", "id": task_id}}}
 
 
+# query for fetching the task of the document with a certain target.id and DANE Task.key
 def task_of_target_id_query(target_id: str, dane_task_id: str, base_query: bool = True):
     task_query = {
         "bool": {
