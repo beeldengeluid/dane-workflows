@@ -10,7 +10,7 @@ TODO integrate this into these PR's (for DANE and DANE-server):
 - https://github.com/CLARIAH/DANE-server/pull/5
 
 After these PRs are merged: get rid of this module and adapt the dane_util.py
-to call the new DANE API functions instead 
+to call the new DANE API functions instead
 """
 
 
