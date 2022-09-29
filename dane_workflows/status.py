@@ -144,6 +144,10 @@ class StatusHandler(ABC):
         raise NotImplementedError("Requires implementation")
 
     @abstractmethod
+    def get_status_row_by_target_id(self, target_id: str) -> Optional[StatusRow]:
+        raise NotImplementedError("Requires implementation")
+
+    @abstractmethod
     def get_status_rows_of_proc_batch(
         self, proc_batch_id: int
     ) -> Optional[List[StatusRow]]:
@@ -383,6 +387,9 @@ class ExampleStatusHandler(StatusHandler):
     def _persist(self, status_rows: List[StatusRow]) -> bool:
         return True  # does nothing, returns True to satisfy set_current_source_batch
 
+    def get_status_row_by_target_id(self, target_id: str) -> Optional[StatusRow]:
+        return None  # TODO implement
+
     def get_status_rows_of_proc_batch(
         self, proc_batch_id: int
     ) -> Optional[List[StatusRow]]:
@@ -494,6 +501,20 @@ class SQLiteStatusHandler(StatusHandler):
                     return False
             return True  # only success if all rows were saved
         return False
+
+    def get_status_row_by_target_id(self, target_id: str) -> Optional[StatusRow]:
+        logger.info("Fetching target_id from DB")
+        conn = self._create_connection(self.DB_FILE)
+        with conn:
+            db_rows = self._run_select_query(
+                conn,
+                "SELECT * FROM status_rows WHERE target_id=?",
+                (target_id,),
+            )
+            if db_rows:
+                status_rows = self._to_status_rows(db_rows)
+                return status_rows[0] if len(status_rows) == 1 else None
+        return None
 
     def get_status_rows_of_proc_batch(
         self, proc_batch_id: int

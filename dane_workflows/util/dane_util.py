@@ -10,6 +10,12 @@ from typing import List, Optional, Tuple
 from elasticsearch7 import Elasticsearch
 from dane import Document
 from dane_workflows.status import StatusRow, ProcessingStatus
+from dane_workflows.util.dane_query_util import (
+    tasks_of_batch_query,
+    results_of_batch_query,
+    result_of_target_id_query,
+    task_of_target_id_query,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -144,79 +150,6 @@ class DANEHandler:
     ------------------------------ ES FUNCTIONS (UNDESIRABLE, BUT REQUIRED) ----------------
     """
 
-    def _generate_tasks_of_batch_query(
-        self, proc_batch_id: int, offset: int, size: int, base_query=True
-    ) -> dict:
-        logger.info("Entering function")
-        match_creator_query = {
-            "bool": {
-                "must": [
-                    {
-                        "query_string": {
-                            "default_field": "creator.id",
-                            "query": '"{}"'.format(
-                                self._get_proc_batch_name(proc_batch_id)
-                            ),
-                        }
-                    }
-                ]
-            }
-        }
-        tasks_query = {
-            "bool": {
-                "must": [
-                    {
-                        "has_parent": {
-                            "parent_type": "document",
-                            "query": match_creator_query,
-                        }
-                    },
-                    {
-                        "query_string": {
-                            "default_field": "task.key",
-                            "query": self.DANE_TASK_ID,
-                        }
-                    },
-                ]
-            }
-        }
-        if base_query:
-            query: dict = {}
-            query["_source"] = ["task", "created_at", "updated_at", "role"]
-            query["from"] = offset
-            query["size"] = size
-            query["query"] = tasks_query
-            return query
-        return tasks_query
-
-    # FIXME: in case the underlying tasks mentioned: "task already assigned", the results will
-    # NOT be found this way
-    def _generate_results_of_batch_query(self, proc_batch_id, offset, size):
-        logger.info("Entering function")
-        tasks_of_batch_query = self._generate_tasks_of_batch_query(
-            proc_batch_id, offset, size, False
-        )
-        return {
-            "_source": ["result", "created_at", "updated_at", "role"],
-            "from": offset,
-            "size": size,
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "has_parent": {
-                                "parent_type": "task",
-                                "query": tasks_of_batch_query,
-                            }
-                        },
-                        {
-                            "exists": {"field": "result.payload"}
-                        },  # only results with a payload
-                    ]
-                }
-            },
-        }
-
     # TODO this function needs to be put in the DANE API!
     def get_tasks_of_batch(
         self, proc_batch_id: int, all_tasks: List[Task], offset=0, size=200
@@ -224,7 +157,9 @@ class DANEHandler:
         logger.info(
             f"Fetching tasks of proc_batch: {self._get_proc_batch_name(proc_batch_id)} from DANE index"
         )
-        query = self._generate_tasks_of_batch_query(proc_batch_id, offset, size)
+        query = tasks_of_batch_query(
+            self._get_proc_batch_name(proc_batch_id), offset, size, self.DANE_TASK_ID
+        )
         logger.debug(json.dumps(query, indent=4, sort_keys=True))
         result = self.DANE_ES.search(
             index=self.DANE_ES_INDEX,
@@ -250,7 +185,9 @@ class DANEHandler:
         logger.info(
             f"Fetching results of proc_batch: {self._get_proc_batch_name(proc_batch_id)} from DANE index"
         )
-        query = self._generate_results_of_batch_query(proc_batch_id, offset, size)
+        query = results_of_batch_query(
+            self._get_proc_batch_name(proc_batch_id), offset, size, self.DANE_TASK_ID
+        )
         logger.debug(json.dumps(query, indent=4, sort_keys=True))
         result = self.DANE_ES.search(
             index=self.DANE_ES_INDEX,
@@ -268,6 +205,42 @@ class DANEHandler:
             return self.get_results_of_batch(
                 proc_batch_id, all_results, offset + size, size
             )
+
+    def get_result_of_target_id(self, target_id: str):
+        logger.info(f"Getting result of target_id {target_id}")
+        query = result_of_target_id_query(target_id, self.DANE_TASK_ID)
+
+        result = self.DANE_ES.search(
+            index=self.DANE_ES_INDEX,
+            body=query,
+            request_timeout=self.DANE_ES_QUERY_TIMEOUT,
+        )
+        logger.info(f"Found: {result['hits']['total']['value']} results")
+        if result["hits"]["total"]["value"] == 1:
+            data = result["hits"]["hits"][0]
+            logger.debug(data)
+            return self._to_result(data)
+
+        logger.warning(f"No result found for target_id: {target_id}")
+        return None
+
+    def get_task_of_target_id(self, target_id: str):
+        logger.info(f"Getting task of target_id {target_id}")
+        query = task_of_target_id_query(target_id, self.DANE_TASK_ID)
+
+        result = self.DANE_ES.search(
+            index=self.DANE_ES_INDEX,
+            body=query,
+            request_timeout=self.DANE_ES_QUERY_TIMEOUT,
+        )
+        logger.info(f"Found: {result['hits']['total']['value']} tasks")
+        if result["hits"]["total"]["value"] == 1:
+            data = result["hits"]["hits"][0]
+            logger.debug(data)
+            return self._to_task(data)
+
+        logger.warning(f"No task found for target_id: {target_id}")
+        return None
 
     # TODO check out if DANE.TASK.from_json also works well instead of this dataclass
     def _to_task(self, es_hit: dict) -> Task:

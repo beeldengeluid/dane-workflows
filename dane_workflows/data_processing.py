@@ -125,6 +125,12 @@ class DataProcessingEnvironment(ABC):
         return results
 
     @abstractmethod
+    def fetch_result_of_target_id(self, target_id: str) -> Optional[ProcessingResult]:
+        raise NotImplementedError(
+            "(optional) Implement to fetch single items from your processing env"
+        )
+
+    @abstractmethod
     def _validate_config(self) -> bool:
         raise NotImplementedError("Implement to validate the config")
 
@@ -252,35 +258,60 @@ class DANEEnvironment(DataProcessingEnvironment):
         logger.info(f"Asking DANEEnvironment for results of proc_batch {proc_batch_id}")
 
         # NOTE results may be empty in case the tasks were already done
+        status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
         results_of_batch = self.dane_handler.get_results_of_batch(proc_batch_id, [])
         tasks_of_batch = self.dane_handler.get_tasks_of_batch(proc_batch_id, [])
 
-        logger.info(f"Number of  found: {len(results_of_batch)}")
+        logger.info(
+            f"Number of status_rows found: {len(status_rows) if status_rows else 0}"
+        )
+        logger.info(f"Number of results found: {len(results_of_batch)}")
         logger.info(f"Number of tasks found: {len(tasks_of_batch)}")
 
         # convert the DANE Tasks and Results into ProcessingResults
         return self._to_processing_results(
-            proc_batch_id, results_of_batch, tasks_of_batch
+            status_rows if status_rows else [], results_of_batch, tasks_of_batch
         )
 
-    # Converts list of Result objects into ProcessingResults
+    # TODO figure out how to make this work without status_rows...
+    def fetch_result_of_target_id(self, target_id: str) -> Optional[ProcessingResult]:
+        logger.info(f"Asking DANEEnvironment for result of target_id {target_id}")
+
+        # NOTE results may be empty in case the tasks were already done
+        status_row = self.status_handler.get_status_row_by_target_id(target_id)
+        result = self.dane_handler.get_result_of_target_id(target_id)
+        task = self.dane_handler.get_task_of_target_id(target_id)
+
+        logger.info(f"StatusRow found {status_row is not None}")
+        logger.info(f"Result found: {result is not None}")
+        logger.info(f"Task found: {task is not None}")
+
+        # convert the DANE Tasks and Results into ProcessingResults
+        processing_results = self._to_processing_results(
+            [status_row] if status_row else [],
+            [result] if result else [],
+            [task] if task else [],
+        )
+        return processing_results[0] if processing_results else None
+
+    # Converts lists of matching StatusRows/Results/Tasks into ProcessingResults
     def _to_processing_results(
         self,
-        proc_batch_id: int,
+        status_rows_of_batch: List[StatusRow],
         results_of_batch: List[Result],
         tasks_of_batch: List[Task],
     ) -> Optional[List[ProcessingResult]]:
-        status_rows = self.status_handler.get_status_rows_of_proc_batch(proc_batch_id)
-        if not status_rows:
-            logger.error(f"No status_rows found for proc_batch_id {proc_batch_id}")
+
+        if not status_rows_of_batch:
+            logger.error("No status_rows provided, returning")
             return None
 
         if not results_of_batch:
-            logger.error(f"No results found for proc_batch_id {proc_batch_id}")
+            logger.error("No results provided, returning")
             return None
 
         if not tasks_of_batch:
-            logger.error(f"No tasks found for proc_batch_id {proc_batch_id}")
+            logger.error("No tasks found, returning")
             return None
 
         # First assign the doc_id, i.e. proc_id, to each processing result via the list of tasks
@@ -291,7 +322,7 @@ class DANEEnvironment(DataProcessingEnvironment):
         # now convert the Result objects to ProcessingResult objects
         processing_results = []
         proc_id_to_result = {result.doc_id: result for result in results_of_batch}
-        for row in status_rows:
+        for row in status_rows_of_batch:
             row.status = ProcessingStatus.RESULTS_FETCHED  # update the status
             if row.proc_id in proc_id_to_result:
                 processing_results.append(  # and add a processing result
@@ -375,6 +406,9 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
             row.status = ProcessingStatus.RESULTS_FETCHED
 
         return [ProcessingResult(row, {}, {}) for row in status_rows]
+
+    def fetch_result_of_target_id(self, target_id: str) -> Optional[ProcessingResult]:
+        return None  # TODO implement
 
 
 # Test your DataProcessingEnvironment in isolation
