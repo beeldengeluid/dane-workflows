@@ -161,6 +161,12 @@ def import_dane_workflow_class(class_path: str):
         logger.critical(f"Malconfigured module path: {class_path}")
         sys.exit()
     module_path = ".".join(tmp[:-1])
-    module = import_module(f"{module_path}")
-    workflow_class = getattr(module, tmp[-1])  # last element is the class name
-    return workflow_class
+    try:
+        module = import_module(f"{module_path}")
+        workflow_class = getattr(module, tmp[-1])  # last element is the class name
+        return workflow_class
+    except ModuleNotFoundError:
+        logger.exception("Module path incorrectly configured")
+    except AttributeError:
+        logger.exception("Module class incorrectly configured")
+    return None
