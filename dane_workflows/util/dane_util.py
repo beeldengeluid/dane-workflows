@@ -3,7 +3,7 @@ import sys
 import json
 import requests
 import logging
-from time import sleep
+from time import sleep, perf_counter
 from enum import Enum, unique
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
@@ -430,35 +430,41 @@ class DANEHandler:
         return errors
 
     # returns a list of DANE Tasks when done
-    # TODO now only the "leaf" task type is monitored (e.g. ASR)
-    # the other tasks are ignored
     def monitor_batch(self, proc_batch_id: int, verbose=False) -> List[Task]:
         logger.info(f"\t\tMonitoring DANE batch: {proc_batch_id}")
-        tasks_of_batch = self.get_tasks_of_batch(proc_batch_id, [])
-        task_type = TaskType(self.DANE_TASK_ID)
-        logger.info(f"Found {len(tasks_of_batch)} tasks")
-        logger.info("*" * 50)
+        start_time = perf_counter()
+        tasks_of_batch = []
+        while True:  # infinite loop, until there are no more running tasks
+            tasks_of_batch = self.get_tasks_of_batch(proc_batch_id, [])
+            task_type = TaskType(self.DANE_TASK_ID)
+            logger.info(f"Found {len(tasks_of_batch)} tasks")
+            logger.info("*" * 50)
 
-        # log the raw JSON status of ALL tasks (verbose only)
-        status_overview = self._generate_tasks_overview(tasks_of_batch)
-        if verbose:
-            self._log_all_tasks_verbose(status_overview)
+            # log the raw JSON status of ALL tasks (verbose only)
+            status_overview = self._generate_tasks_overview(tasks_of_batch)
+            if verbose:
+                self._log_all_tasks_verbose(status_overview)
 
-        # log a status overview per (type of) dane_task (e.g. ASR, DOWNLOAD, etc)
-        logger.info(f"Reporting on the {task_type.value} task")
-        self._log_status_of_dane_task_type(status_overview, task_type)
+            # log a status overview per (type of) dane_task (e.g. ASR, DOWNLOAD, etc)
+            logger.info(f"Reporting on the {task_type.value} task")
+            self._log_status_of_dane_task_type(status_overview, task_type)
 
-        # TODO report and work on the dictionary with statusses to return
-        logger.info(f"Waiting for {self.MONITOR_INTERVAL} seconds")
-        sleep(self.MONITOR_INTERVAL)
-        logger.info("-" * 50)
-        if self._contains_running_tasks(tasks_of_batch) is False:
-            logger.info(f"All done, returning with {tasks_of_batch}")
-            return tasks_of_batch
-        else:
-            logger.info("Not done yet, monitoring some more")
-            # if this takes too long a max recursion depth error will occur...
-            return self.monitor_batch(proc_batch_id, verbose)
+            # TODO report and work on the dictionary with statusses to return
+            logger.info(f"Waiting for {self.MONITOR_INTERVAL} seconds")
+            sleep(self.MONITOR_INTERVAL)
+            logger.info("-" * 50)
+            if not self._contains_running_tasks(tasks_of_batch):
+                logger.info(
+                    f"All tasks were done, monitoring proc_batch {proc_batch_id} stopped"
+                )
+                break
+            logger.info("Not done, continuing to monitor...")
+
+        logger.info(
+            f"Time it took to finish this batch {(perf_counter() - start_time)} seconds"
+        )
+        logger.debug(tasks_of_batch)
+        return tasks_of_batch
 
     # Check if all tasks with proc_batch_id are done running
     def is_proc_batch_done(self, proc_batch_id: int) -> bool:
