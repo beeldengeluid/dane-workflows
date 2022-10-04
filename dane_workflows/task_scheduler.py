@@ -153,6 +153,11 @@ class TaskScheduler(object):
         # if a proc_batch was recovered, make sure to finish it from the last ProcessingStatus
         if last_proc_batch:
             logger.info(f"Recovered proc_batch {last_proc_batch_id}, finishing it up")
+
+            # before doing the "recovery run", check if the batch limit was reached
+            self._check_batch_limit(last_proc_batch_id)
+
+            # run the recovered proc_batch from the highest ProcessingStatus
             if (
                 self._run_proc_batch(last_proc_batch, last_proc_batch_id, skip_steps)
                 is True
@@ -166,7 +171,10 @@ class TaskScheduler(object):
 
         # continue until all is finished or something breaks
         while True:
-            # first get the next proc_batch from the DataProvider
+            # first check if the BATCH_LIMIT was reached
+            self._check_batch_limit(proc_batch_id)
+
+            # then get the next proc_batch from the DataProvider
             status_rows = self._get_next_proc_batch(proc_batch_id, self.BATCH_SIZE)
             if status_rows is None:
                 logger.info("No source_batch remaining, all done, quitting...")
@@ -200,14 +208,19 @@ class TaskScheduler(object):
         return self.data_provider.get_next_batch(proc_batch_id, batch_size)
 
     def _check_batch_limit(self, proc_batch_id: int):
-        if self.BATCH_LIMIT >= 0:
-            if proc_batch_id >= self.BATCH_LIMIT:
-                logger.info(
-                    f"Limit of batches (i.e. {self.BATCH_LIMIT}) reached, stopped processing"
+        logger.info(
+            f"Checking if the BATCH_LIMIT {self.BATCH_LIMIT} was reached for {proc_batch_id}"
+        )
+        # proc_batch_id starts at 0, BATCH_LIMIT starts at 1 (1 means "run 1 batch")
+        if self.BATCH_LIMIT > -1:
+            if proc_batch_id > self.BATCH_LIMIT - 1:
+                logger.warning(
+                    "Limit of {} batches reached, quitting after finishing proc_batch_id: {}".format(
+                        self.BATCH_LIMIT, proc_batch_id
+                    )
                 )
                 sys.exit()
-        else:
-            pass
+        logger.info("BATCH_LIMIT not reached, continuing...")
 
     # The proc_batch (list of StatusRow objects) is processed in 5 steps:
     #
@@ -219,9 +232,6 @@ class TaskScheduler(object):
     def _run_proc_batch(
         self, status_rows: List[StatusRow], proc_batch_id: int, skip_steps: int = 0
     ) -> bool:
-        logger.info("Check the limit of batches to process")
-        self._check_batch_limit(proc_batch_id)
-
         logger.info(
             f"Processing proc_batch {proc_batch_id}, skipping {skip_steps} steps"
         )

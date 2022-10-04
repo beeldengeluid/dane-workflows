@@ -262,11 +262,21 @@ class DANEEnvironment(DataProcessingEnvironment):
         results_of_batch = self.dane_handler.get_results_of_batch(proc_batch_id, [])
         tasks_of_batch = self.dane_handler.get_tasks_of_batch(proc_batch_id, [])
 
-        logger.info(
-            f"Number of status_rows found: {len(status_rows) if status_rows else 0}"
-        )
+        num_status_rows = len(status_rows) if status_rows else 0
+        logger.info(f"Number of status_rows found: {num_status_rows}")
         logger.info(f"Number of results found: {len(results_of_batch)}")
         logger.info(f"Number of tasks found: {len(tasks_of_batch)}")
+
+        # generate warnings that are worth investigating. Maybe the status DB is
+        # out of sync with the DANE DB (because of manual editing/testing)
+        if num_status_rows > len(results_of_batch):
+            logger.warning("Not all status_rows in this batch have DANE results")
+        if num_status_rows > len(tasks_of_batch):
+            logger.warning("Not all status_rows in this batch have DANE tasks")
+        if num_status_rows < len(results_of_batch):
+            logger.warning("There are more DANE results than status_rows in this batch")
+        if num_status_rows < len(tasks_of_batch):
+            logger.warning("There are more DANE tasks than status_rows in this batch")
 
         # convert the DANE Tasks and Results into ProcessingResults
         return self._to_processing_results(
