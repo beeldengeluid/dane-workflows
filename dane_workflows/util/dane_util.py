@@ -469,6 +469,7 @@ class DANEHandler:
         )  # done if there are no running tasks remaining
 
     # Check if all supplied tasks have (un)successfully run
+    # A task is still running if it is: QUEUED, CREATED or has UNFINISHED_DEPENDENCY
     def _contains_running_tasks(self, tasks_of_batch: List[Task]) -> bool:
         logger.info("Entering function")
         logger.info("Any running tasks here?")
@@ -476,7 +477,22 @@ class DANEHandler:
         if tasks_of_batch is None:
             logger.warning("Called with tasks_of_batch is None")
             return False
-        return len(list(filter(lambda x: x.state == 102, tasks_of_batch))) != 0
+        return (
+            len(
+                list(
+                    filter(
+                        lambda x: x.state
+                        in [
+                            int(TaskState.QUEUED.value),
+                            int(TaskState.UNFINISHED_DEPENDENCY.value),
+                            int(TaskState.CREATED.value),
+                        ],
+                        tasks_of_batch,
+                    )
+                )
+            )
+            != 0
+        )
 
     # returns an overview in the form:
     # {
