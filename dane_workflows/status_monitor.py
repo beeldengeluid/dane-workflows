@@ -342,7 +342,7 @@ class SlackStatusMonitor(StatusMonitor):
         slack_client.chat_postMessage(
             channel=self.config["CHANNEL"],
             blocks=formatted_status,
-            icon_emoji=":ghost:",
+            icon_emoji=":female_elf:",
         )
 
         if formatted_error_report:  # only upload error file if has content
