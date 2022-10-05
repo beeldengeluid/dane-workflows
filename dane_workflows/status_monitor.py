@@ -288,6 +288,41 @@ class SlackStatusMonitor(StatusMonitor):
         - returns the text block
         """
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
+    
+    @staticmethod
+    def _create_markdown_fields_section_block(status_info: dict):
+        """Add a block of type section containing a list of mrkdwn fields
+        Args:
+        - status_info_items:
+            a list of items from status_info
+        Returns:
+        - returns the section block
+        """
+        fields = []
+        for key, value in status_info.items():
+            match value:
+                case str() as value:
+                    text = f"*{key}:*\n{value}"
+                case int() as value:
+                    text = f"*{key}:*\n{value}"
+                case {} as value:
+                    text = f"*{key}:*\nN/A"
+                case dict() as value:
+                    text = f"*{key}:*\n"
+                    for status_or_error, count in value.items():
+                        text += f"{status_or_error}: {count}\n"
+                case _:
+                    raise TypeError(
+                        f"{type(value)} is of the wrong type or this type is not implemented"
+                    )
+            fields.append({
+                "type": "mrkdwn",
+                "text": text
+            })
+        return  {
+            "type": "section",
+            "fields": fields
+        }
 
     def _format_status_info(self, status_info: dict):
         """Format the basis status information for slack
@@ -297,27 +332,15 @@ class SlackStatusMonitor(StatusMonitor):
         - formatted string for the basic status information
         """
         slack_status_info_list = []
+        slack_status_info_list.append(self._create_divider())
         slack_status_info_list.append(
             self._create_basic_text_block(
-                f'*{self.config["WORKFLOW_NAME"]} STATUS REPORT*'
+                f'*Status report for workflow*:\n{self.config["WORKFLOW_NAME"]}'
             )
         )
-        for key, value in status_info.items():
-            match value:
-                case str() as value:
-                    text = f"*{key}*: {value}"
-                case int() as value:
-                    text = f"*{key}*: {value}"
-                case dict() as value:
-                    text = f"*{key}*\n"
-                    for status_or_error, count in value.items():
-                        text += f"{status_or_error}: {count}\n"
-                case _:
-                    raise TypeError(
-                        f"{type(value)} is of the wrong type or this type is not implemented"
-                    )
-            slack_status_info_list.append(self._create_divider())
-            slack_status_info_list.append(self._create_basic_text_block(text))
+        slack_status_info_list.append(
+            self._create_markdown_fields_section_block(status_info)
+        )
 
         return slack_status_info_list
 
