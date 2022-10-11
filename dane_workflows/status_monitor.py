@@ -309,9 +309,15 @@ class SlackStatusMonitor(StatusMonitor):
                 case int() as value:
                     text = f"*{key}:*\n{value}"
                 case {} as value:
-                    text = f"*{key}:*\nN/A"
+                    if 'error' in key.lower():
+                        text = f"*{key}:*\nN/A :large_green_circle:"
+                    else:
+                        text = f"*{key}:*\nN/A"
                 case dict() as value:
-                    text = f"*{key}:*\n"
+                    if 'error' in key.lower():
+                        text = f"*{key}:*\n:red_circle:\n"
+                    else:
+                        text = f"*{key}:*\n"
                     for status_or_error, count in value.items():
                         text += f"{status_or_error}: {count}\n"
                 case _:
