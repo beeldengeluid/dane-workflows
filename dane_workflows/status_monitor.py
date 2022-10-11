@@ -40,8 +40,8 @@ class StatusMonitor(ABC):
 
         try:
             assert all(
-                [x in self.config for x in ["INCLUDE_EXTRA_INFO"]]
-            ), "StatusMonitor.INCLUDE_EXTRA_INFO missing"
+                [x in self.config for x in ["INCLUDE_EXTRA_INFO", "PROC_ENV", "EXPORTER"]]
+            ), "StatusMonitor config misses required fields"
 
             assert check_setting(
                 self.config["INCLUDE_EXTRA_INFO"], bool
