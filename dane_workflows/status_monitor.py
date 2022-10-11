@@ -397,3 +397,5 @@ if __name__ == "__main__":
     )  # TODO: how do we get this to work from within a workflow with the correct config?
     status_handler = ExampleStatusHandler(config)
     status_monitor = SlackStatusMonitor(config, status_handler)
+    status_monitor.monitor_status()
+    
