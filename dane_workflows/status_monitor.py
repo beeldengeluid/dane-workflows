@@ -40,7 +40,10 @@ class StatusMonitor(ABC):
 
         try:
             assert all(
-                [x in self.config for x in ["INCLUDE_EXTRA_INFO", "PROC_ENV", "EXPORTER"]]
+                [
+                    x in self.config
+                    for x in ["INCLUDE_EXTRA_INFO", "PROC_ENV", "EXPORTER"]
+                ]
             ), "StatusMonitor config misses required fields"
 
             assert check_setting(
@@ -56,11 +59,11 @@ class StatusMonitor(ABC):
     def _check_status(self):
         """Collects status information about the tasks stored in the status_handler and returns it in a dict
         Returns: dict with status information
-        
+
         "Last batch processed:" - processing batch ID of the last batch processed
         "Last batch processed :information_source: Status info:" - dict of statuses and their counts for the last batch processed
         "Last batch processed :warning: Error info:" - dict of error codes and their counts for the last batch processed
-        
+
         "Last src batch retrieved:" - source batch ID of the last batch retrieved from the data provider
         "Last src batch retrieved :information_source: Status info:" - dict of error codes and their counts for the last batch
         retrieved from the data provider
@@ -294,7 +297,7 @@ class SlackStatusMonitor(StatusMonitor):
         - returns the text block as expected by the Slack API
         """
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
-    
+
     @staticmethod
     def _create_markdown_fields_section_block(status_info: dict):
         """Add a block of type section containing a list of mrkdwn fields
@@ -312,12 +315,12 @@ class SlackStatusMonitor(StatusMonitor):
                 case int() as value:
                     text = f"*{key}:*\n{value}"
                 case {} as value:
-                    if 'error' in key.lower():
+                    if "error" in key.lower():
                         text = f"*{key}:*\nN/A :large_green_circle:"
                     else:
                         text = f"*{key}:*\nN/A"
                 case dict() as value:
-                    if 'error' in key.lower():
+                    if "error" in key.lower():
                         text = f"*{key}:*\n:red_circle:\n"
                     else:
                         text = f"*{key}:*\n"
@@ -327,15 +330,9 @@ class SlackStatusMonitor(StatusMonitor):
                     raise TypeError(
                         f"{type(value)} is of the wrong type or this type is not implemented"
                     )
-            fields.append({
-                "type": "mrkdwn",
-                "text": text
-            })
-        return  {
-            "type": "section",
-            "fields": fields
-        }
-    
+            fields.append({"type": "mrkdwn", "text": text})
+        return {"type": "section", "fields": fields}
+
     @staticmethod
     def _create_context_block(config):
         """Add a block of type context containing a mrkdwn field listing relevant values from config
@@ -344,30 +341,42 @@ class SlackStatusMonitor(StatusMonitor):
         Returns:
         - returns the context block as expected by the Slack API
         """
-        statusDefinitionsURL = 'https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9'
+        statusDefinitionsURL = (
+            "https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9"
+        )
         statusItems = {
             "PROC_ENV.CONFIG.DANE_HOST": config["PROC_ENV"]["CONFIG"]["DANE_HOST"],
-            "PROC_ENV.CONFIG.DANE_ES_HOST": config["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
-            "PROC_ENV.CONFIG.DANE_ES_PORT": config["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
-            "PROC_ENV.CONFIG.DANE_ES_INDEX": config["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
-            "EXPORTER.CONFIG.DAAN_ES_HOST": config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
-            "EXPORTER.CONFIG.DAAN_ES_PORT": config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
-            "EXPORTER.CONFIG.DAAN_ES_INPUT_INDEX": config["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
-            "EXPORTER.CONFIG.DAAN_ES_OUTPUT_INDEX": config["EXPORTER"]["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
-            "Definitions": statusDefinitionsURL
+            "PROC_ENV.CONFIG.DANE_ES_HOST": config["PROC_ENV"]["CONFIG"][
+                "DANE_ES_HOST"
+            ],
+            "PROC_ENV.CONFIG.DANE_ES_PORT": config["PROC_ENV"]["CONFIG"][
+                "DANE_ES_PORT"
+            ],
+            "PROC_ENV.CONFIG.DANE_ES_INDEX": config["PROC_ENV"]["CONFIG"][
+                "DANE_ES_INDEX"
+            ],
+            "EXPORTER.CONFIG.DAAN_ES_HOST": config["EXPORTER"]["CONFIG"][
+                "DAAN_ES_HOST"
+            ],
+            "EXPORTER.CONFIG.DAAN_ES_PORT": config["EXPORTER"]["CONFIG"][
+                "DAAN_ES_PORT"
+            ],
+            "EXPORTER.CONFIG.DAAN_ES_INPUT_INDEX": config["EXPORTER"]["CONFIG"][
+                "DAAN_ES_INPUT_INDEX"
+            ],
+            "EXPORTER.CONFIG.DAAN_ES_OUTPUT_INDEX": config["EXPORTER"]["CONFIG"][
+                "DAAN_ES_OUTPUT_INDEX"
+            ],
+            "Definitions": statusDefinitionsURL,
         }
-        contextTexts = ['*{}*: {}'.format(key, value) for (key, value) in statusItems.items()]
-        contextText = '\n'.join(contextTexts)
+        contextTexts = [
+            "*{}*: {}".format(key, value) for (key, value) in statusItems.items()
+        ]
+        contextText = "\n".join(contextTexts)
         return {
-        "type": "context",
-        "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": contextText
-                }
-            ]
+            "type": "context",
+            "elements": [{"type": "mrkdwn", "text": contextText}],
         }
-    
 
     def _format_status_info(self, status_info: dict):
         """Format the basis status information for slack
@@ -386,9 +395,7 @@ class SlackStatusMonitor(StatusMonitor):
         slack_status_info_list.append(
             self._create_markdown_fields_section_block(status_info)
         )
-        slack_status_info_list.append(
-            self._create_context_block(self.config)
-        )
+        slack_status_info_list.append(self._create_context_block(self.config))
 
         return slack_status_info_list
 
@@ -416,8 +423,10 @@ class SlackStatusMonitor(StatusMonitor):
         )
 
         if formatted_error_report:  # only upload error file if has content
-            datetimeNow = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-            filenameErrorReport = '{}-{}.json'.format(self.config["WORKFLOW_NAME"], datetimeNow)
+            datetimeNow = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+            filenameErrorReport = "{}-{}.json".format(
+                self.config["WORKFLOW_NAME"], datetimeNow
+            )
             slack_client.files_upload(
                 content=formatted_error_report,
                 filename=filenameErrorReport,
@@ -447,4 +456,3 @@ if __name__ == "__main__":
     status_handler = ExampleStatusHandler(config)
     status_monitor = SlackStatusMonitor(config, status_handler)
     status_monitor.monitor_status()
-    
