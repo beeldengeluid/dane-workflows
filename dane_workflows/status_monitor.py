@@ -52,13 +52,15 @@ class StatusMonitor(ABC):
     def _check_status(self):
         """Collects status information about the tasks stored in the status_handler and returns it in a dict
         Returns: dict with status information
-        "Last batch processed" - processing batch ID of the last batch processed
-        "Last source batch retrieved" - source batch ID of the last batch retrieved from the data provider
-        "Status information for last batch processed" - dict of statuses and their counts for the last batch processed
-        "Error information for last batch processed"- dict of error codes and their counts for the last batch processed
-        "Status information for last source batch retrieved" - dict of statuses and their counts for the last batch
+        
+        "Last batch processed:" - processing batch ID of the last batch processed
+        "Last batch processed :information_source: Status info:" - dict of statuses and their counts for the last batch processed
+        "Last batch processed :warning: Error info:" - dict of error codes and their counts for the last batch processed
+        
+        "Last src batch retrieved:" - source batch ID of the last batch retrieved from the data provider
+        "Last src batch retrieved :information_source: Status info:" - dict of error codes and their counts for the last batch
         retrieved from the data provider
-        "Error information for last source batch retrieved"- dict of error codes and their counts for the last batch
+        "Last src batch retrieved :warning: Error info:" - dict of statuses and their counts for the last batch
         retrieved from the data provider
         """
 
@@ -69,18 +71,32 @@ class StatusMonitor(ABC):
         logger.info(f"LAST SOURCE BATCH {last_source_batch_id}")
 
         return {
+            # get last batch retrieved
+            "Last src batch retrieved": last_source_batch_id,
             # get last batch processed
             "Last batch processed": last_proc_batch_id,
-            # get last batch retrieved
-            "Last source batch retrieved": last_source_batch_id,
+            # get status and error code information for last batch retrieved
+            "Last src batch retrieved :information_source: Status info": {
+                f"{ProcessingStatus(status).name}": count
+                for status, count in self.status_handler.get_status_counts_for_source_batch_id(
+                    last_source_batch_id
+                ).items()
+            },
             # get status and error code information for last batch processed
-            "Status information for last batch processed": {
+            "Last batch processed :information_source: Status info": {
                 f"{ProcessingStatus(status).name}": count
                 for status, count in self.status_handler.get_status_counts_for_proc_batch_id(
                     last_proc_batch_id
                 ).items()
             },
-            "Error information for last batch processed": (
+            "Last src batch retrieved :warning: Error info": {
+                (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
+                for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
+                    last_source_batch_id
+                ).items()
+                if error_code
+            },
+            "Last batch processed :warning: Error info": (
                 {
                     f"{ErrorCode(error_code).name}" if error_code else "N/A": count
                     for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
@@ -89,20 +105,6 @@ class StatusMonitor(ABC):
                     if error_code
                 }
             ),
-            # get status and error code information for last batch retrieved
-            "Status information for last source batch retrieved": {
-                f"{ProcessingStatus(status).name}": count
-                for status, count in self.status_handler.get_status_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-            },
-            "Error information for last source batch retrieved": {
-                (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
-                for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-                if error_code
-            },
         }
 
     def _get_detailed_status_report(self, include_extra_info):
