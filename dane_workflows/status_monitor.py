@@ -11,6 +11,7 @@ from dane_workflows.status import (
     ErrorCode,
 )
 from dane_workflows.util.base_util import check_setting, load_config_or_die
+from datetime import datetime
 
 
 logger = logging.getLogger(__name__)
@@ -370,10 +371,13 @@ class SlackStatusMonitor(StatusMonitor):
         )
 
         if formatted_error_report:  # only upload error file if has content
+            datetimeNow = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+            filenameErrorReport = '{}-{}.json'.format(self.config["WORKFLOW_NAME"], datetimeNow)
             slack_client.files_upload(
                 content=formatted_error_report,
+                filename=filenameErrorReport,
                 channels=[self.config["CHANNEL"]],
-                initial_comment="For more details, review this error file",
+                initial_comment="*Error file* (based on current status database)",
             )
 
     def monitor_status(self):
