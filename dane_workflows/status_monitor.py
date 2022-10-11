@@ -25,6 +25,9 @@ class StatusMonitor(ABC):
             if "CONFIG" in config["STATUS_MONITOR"]
             else {}
         )
+        # add PROC_ENV.CONFIG and EXPORTER.CONFIG as they contain relevant values for monitoring
+        self.config["PROC_ENV"] = config["PROC_ENV"]
+        self.config["EXPORTER"] = config["EXPORTER"]
 
         # enforce config validation
         if not self._validate_config():
@@ -277,7 +280,7 @@ class SlackStatusMonitor(StatusMonitor):
     def _create_divider():
         """ " Create a divider block
         Returns:
-        - returns a divider block
+        - returns a divider block as expected by the Slack API
         """
         return {"type": "divider"}
 
@@ -288,7 +291,7 @@ class SlackStatusMonitor(StatusMonitor):
         - text:
             the text to put in the text block
         Returns:
-        - returns the text block
+        - returns the text block as expected by the Slack API
         """
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
     
@@ -299,7 +302,7 @@ class SlackStatusMonitor(StatusMonitor):
         - status_info_items:
             a list of items from status_info
         Returns:
-        - returns the section block
+        - returns the section block as expected by the Slack API
         """
         fields = []
         for key, value in status_info.items():
@@ -332,6 +335,39 @@ class SlackStatusMonitor(StatusMonitor):
             "type": "section",
             "fields": fields
         }
+    
+    @staticmethod
+    def _create_context_block(config):
+        """Add a block of type context containing a mrkdwn field listing relevant values from config
+        Args:
+        - contextText: a string containing markdown formatted text
+        Returns:
+        - returns the context block as expected by the Slack API
+        """
+        statusDefinitionsURL = 'https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9'
+        statusItems = {
+            "PROC_ENV.CONFIG.DANE_HOST": config["PROC_ENV"]["CONFIG"]["DANE_HOST"],
+            "PROC_ENV.CONFIG.DANE_ES_HOST": config["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
+            "PROC_ENV.CONFIG.DANE_ES_PORT": config["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
+            "PROC_ENV.CONFIG.DANE_ES_INDEX": config["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
+            "EXPORTER.CONFIG.DAAN_ES_HOST": config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
+            "EXPORTER.CONFIG.DAAN_ES_PORT": config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
+            "EXPORTER.CONFIG.DAAN_ES_INPUT_INDEX": config["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
+            "EXPORTER.CONFIG.DAAN_ES_OUTPUT_INDEX": config["EXPORTER"]["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
+            "Definitions": statusDefinitionsURL
+        }
+        contextTexts = ['*{}*: {}'.format(key, value) for (key, value) in statusItems.items()]
+        contextText = '\n'.join(contextTexts)
+        return {
+        "type": "context",
+        "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": contextText
+                }
+            ]
+        }
+    
 
     def _format_status_info(self, status_info: dict):
         """Format the basis status information for slack
@@ -349,6 +385,9 @@ class SlackStatusMonitor(StatusMonitor):
         )
         slack_status_info_list.append(
             self._create_markdown_fields_section_block(status_info)
+        )
+        slack_status_info_list.append(
+            self._create_context_block(self.config)
         )
 
         return slack_status_info_list
