@@ -74,7 +74,7 @@ def test__check_status(config):
         status_info = status_monitor._check_status()
 
         assert status_info["Last batch processed"] == dummy_last_proc_batch_id
-        assert status_info["Last source batch retrieved"] == dummy_last_source_batch_id
+        assert status_info["Last src batch retrieved"] == dummy_last_source_batch_id
 
         for key in dummy_status_counts_for_proc_batch:
             assert (
@@ -268,26 +268,18 @@ def test_validate_config(
                     "STATUS INFO 2": 4,
                 },
             },
-            [
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": "*TESTING STATUS REPORT*"},
-                },
-                {"type": "divider"},
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": "*Last batch processed*: 12345"},
-                },
-                {"type": "divider"},
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Status information for last batch processed*\nSTATUS INFO 1: 12\nSTATUS INFO 2: 4\n",
-                    },
-                },
-            ],
-        )
+            [{'type': 'divider'},
+             {'text': {'text': '*Status report for workflow*:\nTESTING', 'type': 'mrkdwn'}, 'type': 'section'},
+             {'fields': [{'text': '*Last batch processed:*\n12345', 'type': 'mrkdwn'},
+                         {'text': '*Status information for last batch processed:*\nN/A',
+                          'type': 'mrkdwn'}],
+              'type': 'section'},
+             {'elements': [{'text': '*EXPORTER...DAAN_ES_INPUT_INDEX*: '
+                                    'http://dummy_es_host:0/dummy_es_input_index\n'
+                                    '*EXPORTER...DAAN_ES_OUTPUT_INDEX*: '
+                                    'http://dummy_es_host:0/dummy_es_output_index',
+                                    'type': 'mrkdwn'}],
+              'type': 'context'}])
     ],
 )
 def test_format_status_info(slack_monitor_config, status_info: dict, expected_output):
@@ -313,20 +305,20 @@ def test__send_status(config, formatted_error_report):
     dummy_formatted_status = "dummy formatted status"
 
     with when(slack_sdk.WebClient).chat_postMessage(
-        channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY
+        channel=ANY, blocks=dummy_formatted_status,
     ), when(slack_sdk.WebClient).files_upload(
-        content=formatted_error_report, channels=ANY, initial_comment=ANY
+        content=formatted_error_report, channels=ANY, filename=ANY, initial_comment=ANY
     ):
 
         status_monitor._send_status(dummy_formatted_status, formatted_error_report)
 
         verify(slack_sdk.WebClient, times=1).chat_postMessage(
-            channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY
+            channel=ANY, blocks=dummy_formatted_status,
         )
         verify(
             slack_sdk.WebClient, times=1 if formatted_error_report else 0
         ).files_upload(
-            content=formatted_error_report, channels=ANY, initial_comment=ANY
+            content=formatted_error_report, filename=ANY, channels=ANY, initial_comment=ANY
         )
 
 

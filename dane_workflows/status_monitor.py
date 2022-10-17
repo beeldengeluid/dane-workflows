@@ -344,27 +344,29 @@ class SlackStatusMonitor(StatusMonitor):
         statusDefinitionsURL = (
             "https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9"
         )
-        statusItems = {
-            "PROC_ENV...DANE_HOST": "{}/manage".format(
-                config["PROC_ENV"]["CONFIG"]["DANE_HOST"]
-            ),
-            "PROC_ENV...DANE_ES_HOST": "http://{}:{}/{}".format(
-                config["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
-                config["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
-                config["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
-            ),
-            "EXPORTER...DAAN_ES_INPUT_INDEX": "http://{}:{}/{}".format(
-                config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
-                config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
-                config["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
-            ),
-            "EXPORTER...DAAN_ES_OUTPUT_INDEX": "http://{}:{}/{}".format(
+        statusItems = {}
+        if config["PROC_ENV"]["TYPE"] == "dane_workflows.data_processing.DANEEnvironment":
+            statusItems["PROC_ENV...DANE_HOST"] = "{}/manage".format(
+                    config["PROC_ENV"]["CONFIG"]["DANE_HOST"]
+                )
+            statusItems["PROC_ENV...DANE_ES_HOST"] = "http://{}:{}/{}".format(
+                    config["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
+                    config["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
+                    config["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
+                )
+
+        statusItems["EXPORTER...DAAN_ES_INPUT_INDEX"] = "http://{}:{}/{}".format(
+                    config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
+                    config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
+                    config["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
+                )
+        statusItems["EXPORTER...DAAN_ES_OUTPUT_INDEX"] = "http://{}:{}/{}".format(
                 config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
                 config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
                 config["EXPORTER"]["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
-            ),
-            "Definitions": statusDefinitionsURL,
-        }
+            )
+        statusItems["Definitions"]: statusDefinitionsURL
+
         contextTexts = [
             "*{}*: {}".format(key, value) for (key, value) in statusItems.items()
         ]
