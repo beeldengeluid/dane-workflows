@@ -26,8 +26,8 @@ class StatusMonitor(ABC):
             else {}
         )
         # add PROC_ENV.CONFIG and EXPORTER.CONFIG as they contain relevant values for monitoring
-        self.config["PROC_ENV"] = config["PROC_ENV"]
-        self.config["EXPORTER"] = config["EXPORTER"]
+        self.proc_env_conf = config["PROC_ENV"]
+        self.export_conf = config["EXPORTER"]
 
         # enforce config validation
         if not self._validate_config():
@@ -42,13 +42,14 @@ class StatusMonitor(ABC):
             assert all(
                 [
                     x in self.config
-                    for x in ["INCLUDE_EXTRA_INFO", "PROC_ENV", "EXPORTER"]
+                    for x in ["TOKEN", "CHANNEL", "WORKFLOW_NAME","INCLUDE_EXTRA_INFO"]
                 ]
             ), "StatusMonitor config misses required fields"
 
             assert check_setting(
                 self.config["INCLUDE_EXTRA_INFO"], bool
             ), "StatusMonitor.INCLUDE_EXTRA_INFO not a bool"
+
 
         except AssertionError as e:
             logger.error(f"Configuration error: {str(e)}")
@@ -334,7 +335,7 @@ class SlackStatusMonitor(StatusMonitor):
         return {"type": "section", "fields": fields}
 
     @staticmethod
-    def _create_context_block(config):
+    def _create_context_block(self):
         """Add a block of type context containing a mrkdwn field listing relevant values from config
         Args:
         - contextText: a string containing markdown formatted text
@@ -345,25 +346,25 @@ class SlackStatusMonitor(StatusMonitor):
             "https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9"
         )
         statusItems = {}
-        if config["PROC_ENV"]["TYPE"] == "dane_workflows.data_processing.DANEEnvironment":
+        if self.proc_env_conf["TYPE"] == "dane_workflows.data_processing.DANEEnvironment":
             statusItems["PROC_ENV...DANE_HOST"] = "{}/manage".format(
-                    config["PROC_ENV"]["CONFIG"]["DANE_HOST"]
+                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_HOST"]
                 )
             statusItems["PROC_ENV...DANE_ES_HOST"] = "http://{}:{}/{}".format(
-                    config["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
-                    config["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
-                    config["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
+                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
+                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
+                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
                 )
 
         statusItems["EXPORTER...DAAN_ES_INPUT_INDEX"] = "http://{}:{}/{}".format(
-                    config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
-                    config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
-                    config["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
+                    self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
+                    self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
+                    self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
                 )
         statusItems["EXPORTER...DAAN_ES_OUTPUT_INDEX"] = "http://{}:{}/{}".format(
-                config["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
-                config["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
-                config["EXPORTER"]["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
+                self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
+                self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
+                self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
             )
         statusItems["Definitions"]: statusDefinitionsURL
 
