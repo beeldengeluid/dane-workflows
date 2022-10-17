@@ -42,14 +42,13 @@ class StatusMonitor(ABC):
             assert all(
                 [
                     x in self.config
-                    for x in ["TOKEN", "CHANNEL", "WORKFLOW_NAME","INCLUDE_EXTRA_INFO"]
+                    for x in ["INCLUDE_EXTRA_INFO"]
                 ]
             ), "StatusMonitor config misses required fields"
 
             assert check_setting(
                 self.config["INCLUDE_EXTRA_INFO"], bool
             ), "StatusMonitor.INCLUDE_EXTRA_INFO not a bool"
-
 
         except AssertionError as e:
             logger.error(f"Configuration error: {str(e)}")
@@ -334,7 +333,6 @@ class SlackStatusMonitor(StatusMonitor):
             fields.append({"type": "mrkdwn", "text": text})
         return {"type": "section", "fields": fields}
 
-    @staticmethod
     def _create_context_block(self):
         """Add a block of type context containing a mrkdwn field listing relevant values from config
         Args:
@@ -348,23 +346,23 @@ class SlackStatusMonitor(StatusMonitor):
         statusItems = {}
         if self.proc_env_conf["TYPE"] == "dane_workflows.data_processing.DANEEnvironment":
             statusItems["PROC_ENV...DANE_HOST"] = "{}/manage".format(
-                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_HOST"]
+                    self.proc_env_conf["CONFIG"]["DANE_HOST"]
                 )
             statusItems["PROC_ENV...DANE_ES_HOST"] = "http://{}:{}/{}".format(
-                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_ES_HOST"],
-                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_ES_PORT"],
-                    self.proc_env_conf["PROC_ENV"]["CONFIG"]["DANE_ES_INDEX"],
+                    self.proc_env_conf["CONFIG"]["DANE_ES_HOST"],
+                    self.proc_env_conf["CONFIG"]["DANE_ES_PORT"],
+                    self.proc_env_conf["CONFIG"]["DANE_ES_INDEX"],
                 )
 
         statusItems["EXPORTER...DAAN_ES_INPUT_INDEX"] = "http://{}:{}/{}".format(
-                    self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
-                    self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
-                    self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_INPUT_INDEX"],
+                    self.export_conf["CONFIG"]["DAAN_ES_HOST"],
+                    self.export_conf["CONFIG"]["DAAN_ES_PORT"],
+                    self.export_conf["CONFIG"]["DAAN_ES_INPUT_INDEX"],
                 )
         statusItems["EXPORTER...DAAN_ES_OUTPUT_INDEX"] = "http://{}:{}/{}".format(
-                self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_HOST"],
-                self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_PORT"],
-                self.export_conf["EXPORTER"]["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
+                self.export_conf["CONFIG"]["DAAN_ES_HOST"],
+                self.export_conf["CONFIG"]["DAAN_ES_PORT"],
+                self.export_conf["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
             )
         statusItems["Definitions"]: statusDefinitionsURL
 
@@ -394,7 +392,7 @@ class SlackStatusMonitor(StatusMonitor):
         slack_status_info_list.append(
             self._create_markdown_fields_section_block(status_info)
         )
-        slack_status_info_list.append(self._create_context_block(self.config))
+        slack_status_info_list.append(self._create_context_block())
 
         return slack_status_info_list
 
