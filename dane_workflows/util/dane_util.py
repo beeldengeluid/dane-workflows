@@ -80,6 +80,7 @@ class Result:
     updated_at: str  # es_hit["_source"]["updated_at"],
     task_id: str  # es_hit["_source"]["role"]["parent"]
     doc_id: Optional[str]  # TODO not sure yet how to fetch this
+    # provenance: Optional[dict] TODO fill this in _to_result()
 
 
 class DANEHandler:
@@ -164,8 +165,8 @@ class DANEHandler:
         result = self.DANE_ES.search(
             index=self.DANE_ES_INDEX,
             body=query,
-            request_timeout=self.DANE_ES_QUERY_TIMEOUT,
-        )
+            request_timeout=self.DANE_ES_QUERY_TIMEOUT,  # timeout reached! (60 seconds)
+        )  # TODO better exception handling (OR fix by moving this to DANE-serve API)
         if len(result["hits"]["hits"]) <= 0:
             return all_tasks
         else:
@@ -266,7 +267,8 @@ class DANEHandler:
             es_hit["_source"]["created_at"],
             es_hit["_source"]["updated_at"],
             es_hit["_source"]["role"]["parent"],  # refers to the DANE.Task._id
-            None,  # will be filled in later...
+            None,  # NOTE DANE.Document._id is added later when merging with DANE.Tasks
+            # None, TODO provenance will be added later (not implemented yet)
         )
 
     """

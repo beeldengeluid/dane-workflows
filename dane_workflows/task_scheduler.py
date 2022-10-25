@@ -127,11 +127,24 @@ class TaskScheduler(object):
             # determine where to resume processing by looking at the highest step in the chain
             # TODO maybe it's better to use the LOWEST step of the batch
             highest_proc_stat = 0
+            num_errors_in_last_proc_batch = 0
             for row in last_proc_batch:
                 if row.status == ProcessingStatus.ERROR:  # skip errors
+                    num_errors_in_last_proc_batch += 1
                     continue
                 if row.status.value > highest_proc_stat:
                     highest_proc_stat = row.status.value
+
+            # ALL items of the last proc_batch failed
+            if num_errors_in_last_proc_batch == len(last_proc_batch):
+                logger.warning(
+                    "The last proc_batch failed completely, starting at the next batch"
+                )
+                return (
+                    None,
+                    last_proc_batch_id + 1,  # continue on from the NEXT proc_batch
+                    0,
+                )
 
             # ProcessingStatus values are ordered, so we can simply subtract to find the steps to skip
             skip_steps = highest_proc_stat - 2
