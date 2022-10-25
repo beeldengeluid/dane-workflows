@@ -26,7 +26,7 @@ class ProcEnvResponse:
 @dataclass
 class ProcessingResult:
     status_row: StatusRow
-    result_data: dict
+    result_data: dict  # TODO: will also contain the prov info in the near future
     generator: dict  # contains information about the software generating the results
 
 
