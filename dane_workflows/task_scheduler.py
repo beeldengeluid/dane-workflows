@@ -344,7 +344,7 @@ class TaskScheduler(object):
         logger.info(f"Successfully exported proc_batch {proc_batch_id} output")
         return True
 
-    """ ------------ FUNCTIONS TO TRIGGER PARTS OF THE WORKFLOW WITHOUT KEEPING STATUS -------------- """
+    """ ------------ FUNCTIONS TO TRIGGER PARTS OF THE WORKFLOW (WITHOUT KEEPING STATUS) -------------- """
 
     # use this to fetch a single processing result of a known target_id
     def trigger_fetch_result_single_target_id(
@@ -366,3 +366,13 @@ class TaskScheduler(object):
             return self.exporter.export_results([processing_result])
         logger.error(f"Cannot export: no processing result found for: {target_id}")
         return False
+
+    # use this to export a certain proc_batch (that already has been processed)
+    def trigger_export_proc_batch_id(self, proc_batch_id: int) -> bool:
+        processing_results = self._fetch_proc_batch_output(proc_batch_id)
+        if processing_results and self._export_proc_batch_output(
+            proc_batch_id, processing_results
+        ):
+            return True
+        else:
+            return False

@@ -148,6 +148,69 @@ class DANEHandler:
         return [doc._id for doc in dane_docs] if len(dane_docs) > 0 else None
 
     """
+    ------------------------------- DANE API CALLS ---------------------------
+    [
+        {
+            "_id": "780b9753513ff924c64bae43fcffb9646797ab28",
+            "key": "ASR",
+            "state": "412",
+            "msg": "Unfinished dependencies",
+            "priority": 1,
+            "created_at": "2022-10-26T10:26:35",
+            "updated_at": "2022-10-26T10:26:35",
+            "args": {
+            "*": null
+            }
+        },
+        {
+            "_id": "52e21b867622e857135a67561f0664cabfea967a",
+            "key": "BG_DOWNLOAD",
+            "state": "500",
+            "msg": "Failed to receive a file from the B&G proxy",
+            "priority": 1,
+            "created_at": "2022-10-26T10:26:35",
+            "updated_at": "2022-10-27T07:34:47",
+            "args": {
+            "*": null
+            }
+        }
+        ]
+    """
+
+    def _get_tasks_of_document(
+        self, doc_id: str, leaf_task_to_omit: str = None
+    ) -> List[Task]:
+        logger.info(f"Fetching tasks of document {doc_id}")
+        resp = requests.get(f"{self.DANE_DOC_ENDPOINT}/{doc_id}/tasks")
+        if resp.status_code != 200:
+            logger.error(f"Failed to fetch tasks for {doc_id}")
+            return []
+
+        try:
+            task_data = json.loads(resp.text)  # returns list of tasks
+            return list(
+                filter(
+                    lambda x: x.key != leaf_task_to_omit,
+                    [
+                        Task(
+                            t["_id"],
+                            t["msg"],
+                            t["state"],
+                            t["priority"],
+                            t["key"],
+                            t["created_at"],
+                            t["updated_at"],
+                            doc_id,
+                        )
+                        for t in task_data
+                    ],
+                )
+            )
+        except json.JSONDecodeError:
+            logger.exception("No JSON data returned by DANE API")
+            return []
+
+    """
     ------------------------------ ES FUNCTIONS (UNDESIRABLE, BUT REQUIRED) ----------------
     """
 
@@ -460,6 +523,16 @@ class DANEHandler:
                     f"All tasks were done, monitoring proc_batch {proc_batch_id} stopped"
                 )
                 break
+
+            # now also check if we are not waiting for failed dependencies
+            if not self._check_unfinished_dependencies_ok(
+                tasks_of_batch, self.DANE_TASK_ID
+            ):
+                logger.warning(
+                    f"The remaining tasks have failed depenendencies; monitoring proc_batch {proc_batch_id} stopped"
+                )
+                break
+
             logger.info("Not done, continuing to monitor...")
 
         logger.info(
@@ -500,6 +573,69 @@ class DANEHandler:
                 )
             )
             != 0
+        )
+
+    # checks if there are failed dependencies for self.DANE_TASK_ID
+    def _check_unfinished_dependencies_ok(
+        self, tasks_of_batch: List[Task], leaf_task: str
+    ) -> bool:
+        logger.info(
+            f"Checking {len(tasks_of_batch)} tasks of batch for failed dependencies"
+        )
+        # check the unfinished dependencies
+        tasks_with_unfinished_deps = list(
+            filter(lambda x: x.state == TaskState.UNFINISHED_DEPENDENCY, tasks_of_batch)
+        )
+        # it's ok if there are no tasks with unfinished deps (it's handled in the monitor function)
+        if not tasks_with_unfinished_deps:
+            return True
+
+        logger.info(
+            f"Checking {len(tasks_with_unfinished_deps)} tasks with unfinished dependencies"
+        )
+        failed_count = 0
+        for t in tasks_with_unfinished_deps:
+            dependant_tasks = self._get_tasks_of_document(t.doc_id, leaf_task)
+            failed_count += 1 if self._contains_failed_deps(dependant_tasks) else 0
+
+        # as long as not all dependencies have failed, it's ok
+        return len(tasks_with_unfinished_deps) > failed_count
+
+    # check if any dependant tasks failed
+    def _contains_failed_deps(self, tasks: List[Task]) -> bool:
+        return any(
+            t.state
+            in [
+                int(TaskState.BAD_REQUEST.value),
+                int(TaskState.ACCESS_DENIED.value),
+                int(TaskState.NOT_FOUND.value),
+                int(TaskState.ERROR.value),
+                int(TaskState.ERROR_INVALID_INPUT.value),
+                int(TaskState.ERROR_PROXY.value),
+            ]
+            for t in tasks
+        )
+
+    # NOTE: (not used, but maybe useful later) check if there are any pending dependant tasks
+    def _contains_pending_deps(self, tasks: List[Task]) -> bool:
+        return any(
+            t.state
+            in [
+                int(TaskState.QUEUED.value),
+                int(TaskState.UNFINISHED_DEPENDENCY.value),
+                int(TaskState.CREATED.value),
+            ]
+            for t in tasks
+        )
+
+    # NOTE: (not used, but maybe useful later) check if ALL dependant tasks were done
+    def _dependencies_met(self, tasks: List[Task]) -> bool:
+        return all(
+            t.state
+            in [
+                int(TaskState.SUCCESS.value),
+            ]
+            for t in tasks
         )
 
     # returns an overview in the form:
