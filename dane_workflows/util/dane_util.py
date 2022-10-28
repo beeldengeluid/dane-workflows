@@ -180,7 +180,9 @@ class DANEHandler:
     def _get_tasks_of_document(
         self, doc_id: str, leaf_task_to_omit: str = None
     ) -> List[Task]:
-        logger.info(f"Fetching tasks of document {doc_id}")
+        logger.info(
+            f"Fetching tasks of document {doc_id}, filtering out {leaf_task_to_omit}"
+        )
         try:
             resp = requests.get(f"{self.DANE_DOC_ENDPOINT}/{doc_id}/tasks")
             if resp.status_code != 200:
@@ -559,9 +561,9 @@ class DANEHandler:
     # Check if all supplied tasks have (un)successfully run
     # A task is still running if it is: QUEUED, CREATED or has UNFINISHED_DEPENDENCY
     def _contains_running_tasks(self, tasks_of_batch: List[Task]) -> bool:
-        logger.info("Entering function")
-        logger.info("Any running tasks here?")
-        logger.info(tasks_of_batch)
+        logger.info(
+            f"Checking {len(tasks_of_batch)} tasks to see if they are any running"
+        )
         if tasks_of_batch is None:
             logger.warning("Called with tasks_of_batch is None")
             return False
@@ -591,10 +593,14 @@ class DANEHandler:
         )
         # check the unfinished dependencies
         tasks_with_unfinished_deps = list(
-            filter(lambda x: x.state == TaskState.UNFINISHED_DEPENDENCY, tasks_of_batch)
+            filter(
+                lambda x: x.state == TaskState.UNFINISHED_DEPENDENCY.value,
+                tasks_of_batch,
+            )
         )
         # it's ok if there are no tasks with unfinished deps (it's handled in the monitor function)
         if not tasks_with_unfinished_deps:
+            logger.info("There are no tasks with unfinished dependencies")
             return True
 
         logger.info(
