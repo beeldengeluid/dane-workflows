@@ -4,7 +4,7 @@ import json
 import requests
 import logging
 from time import sleep, perf_counter
-from enum import Enum, unique
+from enum import Enum, IntEnum, unique
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from elasticsearch7 import Elasticsearch
@@ -36,26 +36,22 @@ class TaskType(Enum):
 
 
 @unique
-class TaskState(Enum):
-    QUEUED = "102"  # Task has been sent to a queue, it might be being worked on or held in queue.
-    SUCCESS = "200"  # Task completed successfully.
-    CREATED = "201"  # Task is registered, but has not been acted upon.
-    TASK_RESET = "205"  # Task reset state, typically after manual intervention
-    BAD_REQUEST = (
-        "400"  # Malformed request, typically the document or task description.
-    )
-    ACCESS_DENIED = "403"  # Access denied to underlying source material.
-    NOT_FOUND = "404"  # Underlying source material not found.
-    UNFINISHED_DEPENDENCY = "412"  # Task has a dependency which has not completed yet.
+class TaskState(IntEnum):
+    QUEUED = 102  # Task has been sent to a queue, it might be being worked on or held in queue.
+    SUCCESS = 200  # Task completed successfully.
+    CREATED = 201  # Task is registered, but has not been acted upon.
+    TASK_RESET = 205  # Task reset state, typically after manual intervention
+    BAD_REQUEST = 400  # Malformed request, typically the document or task description.
+    ACCESS_DENIED = 403  # Access denied to underlying source material.
+    NOT_FOUND = 404  # Underlying source material not found.
+    UNFINISHED_DEPENDENCY = 412  # Task has a dependency which has not completed yet.
     NO_ROUTE_TO_QUEUE = (
-        "422"  # If a task cannot be routed to a queue, this state is returned.
+        422  # If a task cannot be routed to a queue, this state is returned.
     )
-    ERROR = (
-        "500"  # Error occurred during processing, details should be given in message.
-    )
-    ERROR_INVALID_INPUT = "502"  # Worker received invalid or partial input.
+    ERROR = 500  # Error occurred during processing, details should be given in message.
+    ERROR_INVALID_INPUT = 502  # Worker received invalid or partial input.
     ERROR_PROXY = (
-        "503"  # Worker received an error response from a remote service it depends on.
+        503  # Worker received an error response from a remote service it depends on.
     )
 
 
@@ -573,9 +569,9 @@ class DANEHandler:
                     filter(
                         lambda x: x.state
                         in [
-                            int(TaskState.QUEUED.value),
-                            int(TaskState.UNFINISHED_DEPENDENCY.value),
-                            int(TaskState.CREATED.value),
+                            TaskState.QUEUED.value,
+                            TaskState.UNFINISHED_DEPENDENCY.value,
+                            TaskState.CREATED.value,
                         ],
                         tasks_of_batch,
                     )
@@ -619,12 +615,12 @@ class DANEHandler:
         return any(
             t.state
             in [
-                int(TaskState.BAD_REQUEST.value),
-                int(TaskState.ACCESS_DENIED.value),
-                int(TaskState.NOT_FOUND.value),
-                int(TaskState.ERROR.value),
-                int(TaskState.ERROR_INVALID_INPUT.value),
-                int(TaskState.ERROR_PROXY.value),
+                TaskState.BAD_REQUEST.value,
+                TaskState.ACCESS_DENIED.value,
+                TaskState.NOT_FOUND.value,
+                TaskState.ERROR.value,
+                TaskState.ERROR_INVALID_INPUT.value,
+                TaskState.ERROR_PROXY.value,
             ]
             for t in tasks
         )
@@ -634,9 +630,9 @@ class DANEHandler:
         return any(
             t.state
             in [
-                int(TaskState.QUEUED.value),
-                int(TaskState.UNFINISHED_DEPENDENCY.value),
-                int(TaskState.CREATED.value),
+                TaskState.QUEUED.value,
+                TaskState.UNFINISHED_DEPENDENCY.value,
+                TaskState.CREATED.value,
             ]
             for t in tasks
         )
@@ -646,7 +642,7 @@ class DANEHandler:
         return all(
             t.state
             in [
-                int(TaskState.SUCCESS.value),
+                TaskState.SUCCESS.value,
             ]
             for t in tasks
         )
@@ -692,7 +688,7 @@ class DANEHandler:
         for state in states.keys():
             state_count = len(states[state].get("tasks", []))
             try:
-                ts = TaskState(state)
+                ts = TaskState(int(state))
                 logger.info(f"Number of {ts.name} tasks: {state_count}")
             except ValueError:
                 logger.info(f"Found an unmapped DANE status code: {state}")
