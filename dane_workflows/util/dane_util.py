@@ -59,8 +59,8 @@ class TaskState(IntEnum):
 class Task:
     id: str  # es_hit["_id"],
     message: str  # es_hit["_source"]["task"]["msg"],
-    state: int  # es_hit["_source"]["task"]["state"],
-    priority: int  # es_hit["_source"]["task"]["priority"],
+    state: int  # int(es_hit["_source"]["task"]["state"]),
+    priority: int  # int(es_hit["_source"]["task"]["priority"]),
     key: str  # es_hit["_source"]["task"]["key"],
     created_at: str  # es_hit["_source"]["created_at"],
     updated_at: str  # es_hit["_source"]["updated_at"],
@@ -197,8 +197,8 @@ class DANEHandler:
                         Task(
                             t["_id"],
                             t["msg"],
-                            t["state"],
-                            t["priority"],
+                            int(t["state"]),
+                            int(t["priority"]),
                             t["key"],
                             t["created_at"],
                             t["updated_at"],
@@ -317,8 +317,8 @@ class DANEHandler:
         return Task(
             es_hit["_id"],
             es_hit["_source"]["task"]["msg"],
-            es_hit["_source"]["task"]["state"],
-            es_hit["_source"]["task"]["priority"],
+            int(es_hit["_source"]["task"]["state"]),
+            int(es_hit["_source"]["task"]["priority"]),
             es_hit["_source"]["task"]["key"],
             es_hit["_source"]["created_at"],
             es_hit["_source"]["updated_at"],
@@ -612,6 +612,7 @@ class DANEHandler:
 
     # check if any dependant tasks failed
     def _contains_failed_deps(self, tasks: List[Task]) -> bool:
+        logger.info(f"Checking {len(tasks)} tasks (dependencies) to see if they failed")
         return any(
             t.state
             in [
