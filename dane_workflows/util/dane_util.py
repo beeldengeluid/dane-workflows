@@ -536,7 +536,7 @@ class DANEHandler:
                 tasks_of_batch, self.DANE_TASK_ID
             ):
                 logger.warning(
-                    f"The remaining tasks have failed depenendencies; monitoring proc_batch {proc_batch_id} stopped"
+                    f"The remaining tasks all have failed dependencies; monitoring proc_batch {proc_batch_id} stopped"
                 )
                 break
 
