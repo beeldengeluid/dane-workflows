@@ -181,13 +181,17 @@ class DANEHandler:
         self, doc_id: str, leaf_task_to_omit: str = None
     ) -> List[Task]:
         logger.info(f"Fetching tasks of document {doc_id}")
-        resp = requests.get(f"{self.DANE_DOC_ENDPOINT}/{doc_id}/tasks")
-        if resp.status_code != 200:
-            logger.error(f"Failed to fetch tasks for {doc_id}")
-            return []
-
         try:
-            task_data = json.loads(resp.text)  # returns list of tasks
+            resp = requests.get(f"{self.DANE_DOC_ENDPOINT}/{doc_id}/tasks")
+            if resp.status_code != 200:
+                logger.error(
+                    f"Failed to fetch tasks for {doc_id}; status_code={resp.status_code}"
+                )
+                logger.error(resp.text)
+                return []
+
+            # returns list of Task objects TODO use DANE.Task later on
+            task_data = json.loads(resp.text)
             return list(
                 filter(
                     lambda x: x.key != leaf_task_to_omit,
@@ -208,6 +212,9 @@ class DANEHandler:
             )
         except json.JSONDecodeError:
             logger.exception("No JSON data returned by DANE API")
+            return []
+        except Exception:
+            logger.exception(f"Failed to fetch tasks for doc ID: {doc_id}")
             return []
 
     """
