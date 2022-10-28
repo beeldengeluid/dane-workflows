@@ -267,6 +267,9 @@ class TaskScheduler(object):
                 return False
 
         if skip_steps < 5:
+            # TODO before fetching the results, implement a call that updates the status
+            # of ALL items within the proc_batch, regardless of success/failure
+
             # now fetch the results from the ProcessingEnvironment
             # even if this was already done, it's required again for the unfinished export
             processing_results = self._fetch_proc_batch_output(proc_batch_id)

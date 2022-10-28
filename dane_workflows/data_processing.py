@@ -344,7 +344,7 @@ class DANEEnvironment(DataProcessingEnvironment):
                 )
             else:
                 logger.warning(
-                    f"{row.proc_id} not found in DANE results, perhaps the parent task {result.task_id} was bounced"
+                    f"{row.proc_id} not found in DANE results, perhaps the task {result.task_id} could not finished because of failed dependencies"
                 )
         return processing_results
 

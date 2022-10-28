@@ -71,6 +71,8 @@ class ErrorCode(IntEnum):  # TODO assign this to each StatusRow
 
     # item-level error code
     PROCESSING_FAILED = 4  # the proc env could not process this item
+    # TODO PROCESSING_FAILED_DEPENDENCIES_FAILED = 9
+    # TODO think of more things that could have failed during processing
     EXPORT_FAILED_SOURCE_DOC_NOT_FOUND = (
         5  # the doc at the source does not exist (anymore)
     )
