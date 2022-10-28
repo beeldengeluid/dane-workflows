@@ -65,7 +65,7 @@ Called by the `TaskScheduler` with output data from a processing environment. No
 
 ## Installation
 
-Install via pypi.org, using e.g.
+Install via pypi.org, [latest version](https://pypi.org/project/dane-workflows/), using e.g.
 
 ```
 pip install dane-workflows
