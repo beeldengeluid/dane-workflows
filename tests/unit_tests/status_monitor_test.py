@@ -291,9 +291,9 @@ def test_format_status_info(slack_monitor_config, status_info: dict, expected_ou
 
 
 @pytest.mark.parametrize(
-    "formatted_error_report", [None, "a formatted error report string"]
+    "formatted_status_report", [None, "a formatted satus report string"]
 )
-def test__send_status(config, formatted_error_report):
+def test__send_status(config, formatted_status_report):
     status_handler = ExampleStatusHandler(config)
     config["STATUS_MONITOR"]["CONFIG"] = {
         "TOKEN": "a token",
@@ -307,18 +307,18 @@ def test__send_status(config, formatted_error_report):
     with when(slack_sdk.WebClient).chat_postMessage(
         channel=ANY, blocks=dummy_formatted_status,
     ), when(slack_sdk.WebClient).files_upload(
-        content=formatted_error_report, channels=ANY, filename=ANY, initial_comment=ANY
+        content=formatted_status_report, channels=ANY, filename=ANY, initial_comment=ANY
     ):
 
-        status_monitor._send_status(dummy_formatted_status, formatted_error_report)
+        status_monitor._send_status(dummy_formatted_status, formatted_status_report)
 
         verify(slack_sdk.WebClient, times=1).chat_postMessage(
             channel=ANY, blocks=dummy_formatted_status,
         )
         verify(
-            slack_sdk.WebClient, times=1 if formatted_error_report else 0
+            slack_sdk.WebClient, times=1 if formatted_status_report else 0
         ).files_upload(
-            content=formatted_error_report, filename=ANY, channels=ANY, initial_comment=ANY
+            content=formatted_status_report, filename=ANY, channels=ANY, initial_comment=ANY
         )
 
 
@@ -334,14 +334,14 @@ def test_monitor_status(config, include_extra_info):
     status_monitor = SlackStatusMonitor(config, status_handler)
 
     dummy_status = {"dummy-key": "dummy-value"}
-    dummy_error_report = {"dummy-error-key": "dummy-error-value"}
+    dummy_satus_report = {"dummy-error-key": "dummy-error-value"}
     dummy_formatted_status_info = "dummy formatted info"
-    dummy_formatted_error_report = "dummy formatted error report"
+    dummy_formatted_status_report = "dummy formatted error report"
 
     with when(status_monitor)._check_status().thenReturn(dummy_status), when(
         status_monitor
     )._get_detailed_status_report(include_extra_info=include_extra_info).thenReturn(
-        dummy_error_report
+        dummy_satus_report
     ), when(
         status_monitor
     )._format_status_info(
@@ -350,14 +350,14 @@ def test_monitor_status(config, include_extra_info):
         dummy_formatted_status_info
     ), when(
         status_monitor
-    )._format_error_report(
-        dummy_error_report
+    )._format_status_report(
+        dummy_satus_report
     ).thenReturn(
-        dummy_formatted_error_report
+        dummy_formatted_status_report
     ), when(
         status_monitor
     )._send_status(
-        dummy_formatted_status_info, dummy_formatted_error_report
+        dummy_formatted_status_info, dummy_formatted_status_report
     ):
 
         status_monitor._monitor_status()
@@ -367,7 +367,7 @@ def test_monitor_status(config, include_extra_info):
             include_extra_info=include_extra_info
         )
         verify(status_monitor, times=1)._format_status_info(dummy_status)
-        verify(status_monitor, times=1)._format_error_report(dummy_error_report)
+        verify(status_monitor, times=1)._format_status_report(dummy_satus_report)
         verify(status_monitor, times=1)._send_status(
-            dummy_formatted_status_info, dummy_formatted_error_report
+            dummy_formatted_status_info, dummy_formatted_status_report
         )

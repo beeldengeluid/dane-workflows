@@ -132,7 +132,7 @@ class StatusMonitor(ABC):
             uncompleted_batch_ids,
         ) = self.status_handler.get_completed_semantic_source_batch_ids()
 
-        error_report = {
+        status_report = {
             "Completed semantic source batch IDs": completed_batch_ids,
             "Uncompleted semantic source batch IDs": uncompleted_batch_ids,
             "Current semantic source batch ID": self.status_handler.get_name_of_source_batch_id(
@@ -143,21 +143,21 @@ class StatusMonitor(ABC):
         }
 
         if include_extra_info:
-            error_report[
+            status_report[
                 "Status overview per extra info"
             ] = self.status_handler.get_status_counts_per_extra_info_value()
 
-        return error_report
-    
+        return status_report
+
     def _monitor_status(self):
         """Retrieves the status and error information and communicates this via the
         chosen method (implemented in _send_status())
         """
         status_info = self._check_status()
-        error_report = self._get_detailed_status_report(include_extra_info=self.config["INCLUDE_EXTRA_INFO"])
+        satus_report = self._get_detailed_status_report(include_extra_info=self.config["INCLUDE_EXTRA_INFO"])
         formatted_status_info = self._format_status_info(status_info)
-        formatted_error_report = self._format_error_report(error_report)
-        self._send_status(formatted_status_info, formatted_error_report)
+        formatted_status_report = self._format_status_report(satus_report)
+        self._send_status(formatted_status_info, formatted_status_report)
 
     @abstractmethod
     def _format_status_info(self, status_info: dict):
@@ -173,21 +173,21 @@ class StatusMonitor(ABC):
         return formatted_status_info
 
     @abstractmethod
-    def _format_error_report(self, error_report: dict):
+    def _format_status_report(self, status_report: dict):
         """Format the detailed status info
         Args:
-        - error_report - detailed status information
+        - status_report - detailed status information
         Returns:
         - formatted strings for the detailed error report
         """
         raise NotImplementedError("All StatusMonitors should implement this")
 
     @abstractmethod
-    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+    def _send_status(self, formatted_status: str, formatted_status_report: str = None):
         """Send status
         Args:
         - formatted_status - a string containing the formatted status information
-        - formatted_error_report - Optional: a string containing the formatted error report
+        - formatted_status_report - Optional: a string containing the formatted error report
         Returns:
         """
         raise NotImplementedError("All StatusMonitors should implement this")
@@ -212,29 +212,29 @@ class ExampleStatusMonitor(StatusMonitor):
         formatted_status_info = json.dumps(status_info)
         return formatted_status_info
 
-    def _format_error_report(self, error_report: dict):
+    def _format_status_report(self, status_report: dict):
         """Format the detailed status info as json
         Args:
-        - error_report - detailed status information
+        - stauts_report - detailed status information
         Returns:
-        - formatted strings for the detailed error report
+        - formatted strings for the detailed stauts report
         """
         # basic superclass implementation is a json dump
-        formatted_error_report = json.dumps(error_report)
+        formatted_status_report = json.dumps(status_report)
 
-        return formatted_error_report
+        return formatted_status_report
 
-    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+    def _send_status(self, formatted_status: str, formatted_status_report: str = None):
         """Send status to terminal
         Args:
         - formatted_status - a string containing the formatted status information
-        - formatted_error_report - Optional: a string containing the formatted error report
+        - formatted_status_report - Optional: a string containing the formatted error report
         Returns:
         """
         logger.info("STATUS INFO:")
         logger.info(formatted_status)
-        logger.info("DETAILED ERROR REPORT:")
-        logger.info(formatted_error_report)
+        logger.info("DETAILED STATUS REPORT:")
+        logger.info(formatted_status_report)
 
 
 class SlackStatusMonitor(StatusMonitor):
@@ -391,20 +391,20 @@ class SlackStatusMonitor(StatusMonitor):
 
         return slack_status_info_list
 
-    def _format_error_report(self, error_report: dict):
+    def _format_status_report(self, status_report: dict):
         """Format the detailed status info for slack
         Args:
-        - error_report - detailed status information
+        - status_report - detailed status information
         Returns:
         - formatted strings for the detailed error report
         """
-        return json.dumps(error_report)
+        return json.dumps(status_report)
 
-    def _send_status(self, formatted_status, formatted_error_report: str = None):
+    def _send_status(self, formatted_status, formatted_status_report: str = None):
         """Send status to slack
         Args:
         - formatted_status - a string containing the formatted status information
-        - formatted_error_report - Optional: a string containing the formatted error report
+        - formatted_status_report - Optional: a string containing the formatted error report
         Returns:
         """
         slack_client = WebClient(self.config["TOKEN"])
@@ -414,22 +414,20 @@ class SlackStatusMonitor(StatusMonitor):
             blocks=formatted_status,
         )
 
-        if formatted_error_report:  # only upload error file if has content
-            datetimeNow = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-            filenameErrorReport = "{}-{}.json".format(
-                self.config["WORKFLOW_NAME"], datetimeNow
+        if formatted_status_report:  # only upload error file if has content
+            datetime_now = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+            filename_status_report = "{}-{}.json".format(
+                self.config["WORKFLOW_NAME"], datetime_now
             )
             slack_client.files_upload(
-                content=formatted_error_report,
-                filename=filenameErrorReport,
+                content=formatted_status_report,
+                filename=filename_status_report,
                 channels=[self.config["CHANNEL"]],
-                initial_comment="*Error file* (based on current status database)",
+                initial_comment="*Satus file* (based on current status database)",
             )
-
 
 
 if __name__ == "__main__":
-
     """Call this to test your chosen StatusMonitor independently.
     It will then run on the status handler specified in the config"""
 
