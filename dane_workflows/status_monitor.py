@@ -148,6 +148,16 @@ class StatusMonitor(ABC):
             ] = self.status_handler.get_status_counts_per_extra_info_value()
 
         return error_report
+    
+    def _monitor_status(self):
+        """Retrieves the status and error information and communicates this via the
+        chosen method (implemented in _send_status())
+        """
+        status_info = self._check_status()
+        error_report = self._get_detailed_status_report(include_extra_info=self.config["INCLUDE_EXTRA_INFO"])
+        formatted_status_info = self._format_status_info(status_info)
+        formatted_error_report = self._format_error_report(error_report)
+        self._send_status(formatted_status_info, formatted_error_report)
 
     @abstractmethod
     def _format_status_info(self, status_info: dict):
@@ -179,13 +189,6 @@ class StatusMonitor(ABC):
         - formatted_status - a string containing the formatted status information
         - formatted_error_report - Optional: a string containing the formatted error report
         Returns:
-        """
-        raise NotImplementedError("All StatusMonitors should implement this")
-
-    @abstractmethod
-    def monitor_status(self):
-        """Retrieves the status and error information and communicates this via the
-        chosen method (implemented in _send_status())
         """
         raise NotImplementedError("All StatusMonitors should implement this")
 
@@ -232,14 +235,6 @@ class ExampleStatusMonitor(StatusMonitor):
         logger.info(formatted_status)
         logger.info("DETAILED ERROR REPORT:")
         logger.info(formatted_error_report)
-
-    def monitor_status(self):
-        """Retrieves the status and error information and communicates this via the terminal"""
-        status_info = self._check_status()
-        error_report = self._get_detailed_status_report(status_info)
-        formatted_status_info = self._format_status_info(status_info)
-        formatted_error_report = self._format_error_report(error_report)
-        self._send_status(formatted_status_info, formatted_error_report)
 
 
 class SlackStatusMonitor(StatusMonitor):
@@ -431,15 +426,6 @@ class SlackStatusMonitor(StatusMonitor):
                 initial_comment="*Error file* (based on current status database)",
             )
 
-    def monitor_status(self):
-        """Retrieves the status and error information and communicates this via the terminal"""
-        status_info = self._check_status()
-        error_report = self._get_detailed_status_report(
-            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
-        )
-        formatted_status_info = self._format_status_info(status_info)
-        formatted_error_report = self._format_error_report(error_report)
-        self._send_status(formatted_status_info, formatted_error_report)
 
 
 if __name__ == "__main__":
@@ -452,4 +438,4 @@ if __name__ == "__main__":
     )  # TODO: how do we get this to work from within a workflow with the correct config?
     status_handler = ExampleStatusHandler(config)
     status_monitor = SlackStatusMonitor(config, status_handler)
-    status_monitor.monitor_status()
+    status_monitor._monitor_status()
