@@ -107,7 +107,7 @@ class DANEHandler:
         )
         self.DANE_ES_INDEX = config["DANE_ES_INDEX"]
         self.DANE_ES_QUERY_TIMEOUT = config["DANE_ES_QUERY_TIMEOUT"]
-    
+
     # NOTE: these files are never cleaned up
     def _get_batch_file_name(self, proc_batch_id: int) -> str:
         fn = os.path.join(

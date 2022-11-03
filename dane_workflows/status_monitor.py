@@ -442,9 +442,7 @@ if __name__ == "__main__":
     """Call this to test your chosen StatusMonitor independently.
     It will then run on the status handler specified in the config"""
 
-    config = load_config_or_die(
-        "../config-example.yml"
-    )
+    config = load_config_or_die("../config-example.yml")
     status_handler = ExampleStatusHandler(config)
     data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
     exporter = ExampleExporter(config, status_handler)
