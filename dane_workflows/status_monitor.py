@@ -444,7 +444,7 @@ if __name__ == "__main__":
 
     config = load_config_or_die(
         "../config-example.yml"
-    )  # TODO: how do we get this to work from within a workflow with the correct config?
+    )
     status_handler = ExampleStatusHandler(config)
     data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
     exporter = ExampleExporter(config, status_handler)
