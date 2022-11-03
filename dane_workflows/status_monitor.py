@@ -13,7 +13,10 @@ from dane_workflows.status import (
 from dane_workflows.util.base_util import check_setting, load_config_or_die
 from datetime import datetime
 
-from dane_workflows.data_processing import DataProcessingEnvironment, ExampleDataProcessingEnvironment
+from dane_workflows.data_processing import (
+    DataProcessingEnvironment,
+    ExampleDataProcessingEnvironment,
+)
 from dane_workflows.exporter import Exporter, ExampleExporter
 
 
@@ -21,7 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 class StatusMonitor(ABC):
-    def __init__(self, config: dict, status_handler: StatusHandler, data_processing_env: DataProcessingEnvironment, exporter: Exporter):
+    def __init__(
+        self,
+        config: dict,
+        status_handler: StatusHandler,
+        data_processing_env: DataProcessingEnvironment,
+        exporter: Exporter,
+    ):
         self.status_handler = status_handler
         self.data_processing_env = data_processing_env
         self.exporter = exporter
@@ -42,10 +51,7 @@ class StatusMonitor(ABC):
 
         try:
             assert all(
-                [
-                    x in self.config
-                    for x in ["INCLUDE_EXTRA_INFO"]
-                ]
+                [x in self.config for x in ["INCLUDE_EXTRA_INFO"]]
             ), "StatusMonitor config misses required fields"
 
             assert check_setting(
@@ -156,7 +162,9 @@ class StatusMonitor(ABC):
         chosen method (implemented in _send_status())
         """
         status_info = self._check_status()
-        satus_report = self._get_detailed_status_report(include_extra_info=self.config["INCLUDE_EXTRA_INFO"])
+        satus_report = self._get_detailed_status_report(
+            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
+        )
         formatted_status_info = self._format_status_info(status_info)
         formatted_status_report = self._format_status_report(satus_report)
         self._send_status(formatted_status_info, formatted_status_report)
@@ -196,8 +204,16 @@ class StatusMonitor(ABC):
 
 
 class ExampleStatusMonitor(StatusMonitor):
-    def __init__(self, config: dict, status_handler: StatusHandler, data_processing_env: DataProcessingEnvironment, exporter: Exporter):
-        super(ExampleStatusMonitor, self).__init__(config, status_handler, data_processing_env, exporter)
+    def __init__(
+        self,
+        config: dict,
+        status_handler: StatusHandler,
+        data_processing_env: DataProcessingEnvironment,
+        exporter: Exporter,
+    ):
+        super(ExampleStatusMonitor, self).__init__(
+            config, status_handler, data_processing_env, exporter
+        )
 
     def _validate_config(self):
         return StatusMonitor._validate_config(self)  # no additional config needed
@@ -240,8 +256,16 @@ class ExampleStatusMonitor(StatusMonitor):
 
 
 class SlackStatusMonitor(StatusMonitor):
-    def __init__(self, config: dict, status_handler: StatusHandler, data_processing_env: DataProcessingEnvironment, exporter: Exporter):
-        super(SlackStatusMonitor, self).__init__(config, status_handler, data_processing_env, exporter)
+    def __init__(
+        self,
+        config: dict,
+        status_handler: StatusHandler,
+        data_processing_env: DataProcessingEnvironment,
+        exporter: Exporter,
+    ):
+        super(SlackStatusMonitor, self).__init__(
+            config, status_handler, data_processing_env, exporter
+        )
 
     def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
@@ -424,5 +448,7 @@ if __name__ == "__main__":
     status_handler = ExampleStatusHandler(config)
     data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
     exporter = ExampleExporter(config, status_handler)
-    status_monitor = SlackStatusMonitor(config, status_handler, data_processing_env, exporter)
+    status_monitor = SlackStatusMonitor(
+        config, status_handler, data_processing_env, exporter
+    )
     status_monitor._monitor_status()

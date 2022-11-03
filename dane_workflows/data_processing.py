@@ -372,8 +372,12 @@ class DANEEnvironment(DataProcessingEnvironment):
 
     def get_pretty_processing_conf_vars(self):
         pretty_config_dict = {}
-        pretty_config_dict["PROC_ENV...DANE_HOST"] = f'{self.config["DANE_HOST"]}/manage'
-        pretty_config_dict["PROC_ENV...DANE_ES_HOST"] = f'http://{self.config["DANE_ES_HOST"]}:{self.config["DANE_ES_PORT"]}/{self.config["DANE_ES_INDEX"]}'
+        pretty_config_dict[
+            "PROC_ENV...DANE_HOST"
+        ] = f'{self.config["DANE_HOST"]}/manage'
+        pretty_config_dict[
+            "PROC_ENV...DANE_ES_HOST"
+        ] = f'http://{self.config["DANE_ES_HOST"]}:{self.config["DANE_ES_PORT"]}/{self.config["DANE_ES_INDEX"]}'
         return pretty_config_dict
 
 

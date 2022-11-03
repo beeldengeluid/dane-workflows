@@ -63,6 +63,10 @@ class ExampleExporter(Exporter):
 
     def get_pretty_export_conf_vars(self):
         pretty_processing_vars = {}
-        pretty_processing_vars["EXPORTER...DAAN_ES_INPUT_INDEX"] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_INPUT_INDEX"]}'
-        pretty_processing_vars["EXPORTER...DAAN_ES_OUTPUT_INDEX"] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_OUTPUT_INDEX"]}'
+        pretty_processing_vars[
+            "EXPORTER...DAAN_ES_INPUT_INDEX"
+        ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_INPUT_INDEX"]}'
+        pretty_processing_vars[
+            "EXPORTER...DAAN_ES_OUTPUT_INDEX"
+        ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_OUTPUT_INDEX"]}'
         return pretty_processing_vars

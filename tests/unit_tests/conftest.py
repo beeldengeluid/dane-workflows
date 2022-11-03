@@ -63,7 +63,9 @@ def example_processing_config():
     config = load_config_or_die(
         relative_from_file(__file__, "../../config-unit-test.yml")
     )
-    config["PROC_ENV"]["TYPE"] = "dane_workflows.data_processing.ExampleDataProcessingEnvironment"
+    config["PROC_ENV"][
+        "TYPE"
+    ] = "dane_workflows.data_processing.ExampleDataProcessingEnvironment"
     config["PROC_ENV"]["CONFIG"] = {}
     config["PROC_ENV"]["CONFIG"]["EXAMPLE_KEY"] = "example_value"
     return config
@@ -72,8 +74,8 @@ def example_processing_config():
 @pytest.fixture
 def example_exporter_config():
     config = load_config_or_die(
-            relative_from_file(__file__, "../../config-unit-test.yml")
-            )
+        relative_from_file(__file__, "../../config-unit-test.yml")
+    )
     config["EXPORTER"]["TYPE"] = "dane_workflows.exporter.ExampleExporter"
     config["EXPORTER"]["DAAN_ES_HOST"] = "dummy_es_host"
     config["EXPORTER"]["DAAN_ES_PORT"] = 0

@@ -96,17 +96,31 @@ def test_monitor_batch(config, proc_batch_id):
         unstub()
 
 
-@pytest.mark.parametrize(('conf_number', 'output'), ([
-    (0,
-        {"PROC_ENV...DANE_HOST" : "your-dane-host/manage",
-         "PROC_ENV...DANE_ES_HOST" : "http://your-dane-es-host:80/your-dane-index"}),
-    (1,
-        {"EXAMPLE_KEY" : "example_value"})
-    ]))
-def test_get_pretty_processing_conf_vars(conf_number, output, dane_data_processing_config, example_processing_config):
+@pytest.mark.parametrize(
+    ("conf_number", "output"),
+    (
+        [
+            (
+                0,
+                {
+                    "PROC_ENV...DANE_HOST": "your-dane-host/manage",
+                    "PROC_ENV...DANE_ES_HOST": "http://your-dane-es-host:80/your-dane-index",
+                },
+            ),
+            (1, {"EXAMPLE_KEY": "example_value"}),
+        ]
+    ),
+)
+def test_get_pretty_processing_conf_vars(
+    conf_number, output, dane_data_processing_config, example_processing_config
+):
     configs_to_use = [dane_data_processing_config, example_processing_config]
     status_handler = ExampleStatusHandler(configs_to_use[conf_number])
-    data_processing_env_class = import_dane_workflow_class(configs_to_use[conf_number]["PROC_ENV"]["TYPE"])
+    data_processing_env_class = import_dane_workflow_class(
+        configs_to_use[conf_number]["PROC_ENV"]["TYPE"]
+    )
     print(configs_to_use[conf_number])
-    data_processing_env = data_processing_env_class(configs_to_use[conf_number], status_handler)
+    data_processing_env = data_processing_env_class(
+        configs_to_use[conf_number], status_handler
+    )
     assert data_processing_env.get_pretty_processing_conf_vars() == output
