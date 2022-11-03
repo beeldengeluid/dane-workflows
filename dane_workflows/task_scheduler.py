@@ -72,7 +72,7 @@ class TaskScheduler(object):
         self.status_monitor = None
         if status_monitor:
             self.status_monitor = status_monitor(
-                config, self.status_handler
+                config, self.status_handler, self.data_processing_env, self.exporter
             )  # optional monitoring
 
     def _validate_config(self):

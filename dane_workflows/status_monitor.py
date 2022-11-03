@@ -13,21 +13,23 @@ from dane_workflows.status import (
 from dane_workflows.util.base_util import check_setting, load_config_or_die
 from datetime import datetime
 
+from dane_workflows.data_processing import DataProcessingEnvironment, ExampleDataProcessingEnvironment
+from dane_workflows.exporter import Exporter, ExampleExporter
+
 
 logger = logging.getLogger(__name__)
 
 
 class StatusMonitor(ABC):
-    def __init__(self, config: dict, status_handler: StatusHandler):
+    def __init__(self, config: dict, status_handler: StatusHandler, data_processing_env: DataProcessingEnvironment, exporter: Exporter):
         self.status_handler = status_handler
+        self.data_processing_env = data_processing_env
+        self.exporter = exporter
         self.config = (
             config["STATUS_MONITOR"]["CONFIG"]
             if "CONFIG" in config["STATUS_MONITOR"]
             else {}
         )
-        # add PROC_ENV.CONFIG and EXPORTER.CONFIG as they contain relevant values for monitoring
-        self.proc_env_conf = config["PROC_ENV"]
-        self.export_conf = config["EXPORTER"]
 
         # enforce config validation
         if not self._validate_config():
@@ -194,8 +196,8 @@ class StatusMonitor(ABC):
 
 
 class ExampleStatusMonitor(StatusMonitor):
-    def __init__(self, config: dict, status_handler: StatusHandler):
-        super(ExampleStatusMonitor, self).__init__(config, status_handler)
+    def __init__(self, config: dict, status_handler: StatusHandler, data_processing_env: DataProcessingEnvironment, exporter: Exporter):
+        super(ExampleStatusMonitor, self).__init__(config, status_handler, data_processing_env, exporter)
 
     def _validate_config(self):
         return StatusMonitor._validate_config(self)  # no additional config needed
@@ -238,8 +240,8 @@ class ExampleStatusMonitor(StatusMonitor):
 
 
 class SlackStatusMonitor(StatusMonitor):
-    def __init__(self, config: dict, status_handler: StatusHandler):
-        super(SlackStatusMonitor, self).__init__(config, status_handler)
+    def __init__(self, config: dict, status_handler: StatusHandler, data_processing_env: DataProcessingEnvironment, exporter: Exporter):
+        super(SlackStatusMonitor, self).__init__(config, status_handler, data_processing_env, exporter)
 
     def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
@@ -339,26 +341,11 @@ class SlackStatusMonitor(StatusMonitor):
             "https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9"
         )
         statusItems = {}
-        if self.proc_env_conf["TYPE"] == "dane_workflows.data_processing.DANEEnvironment":
-            statusItems["PROC_ENV...DANE_HOST"] = "{}/manage".format(
-                    self.proc_env_conf["CONFIG"]["DANE_HOST"]
-                )
-            statusItems["PROC_ENV...DANE_ES_HOST"] = "http://{}:{}/{}".format(
-                    self.proc_env_conf["CONFIG"]["DANE_ES_HOST"],
-                    self.proc_env_conf["CONFIG"]["DANE_ES_PORT"],
-                    self.proc_env_conf["CONFIG"]["DANE_ES_INDEX"],
-                )
-
-        statusItems["EXPORTER...DAAN_ES_INPUT_INDEX"] = "http://{}:{}/{}".format(
-                    self.export_conf["CONFIG"]["DAAN_ES_HOST"],
-                    self.export_conf["CONFIG"]["DAAN_ES_PORT"],
-                    self.export_conf["CONFIG"]["DAAN_ES_INPUT_INDEX"],
-                )
-        statusItems["EXPORTER...DAAN_ES_OUTPUT_INDEX"] = "http://{}:{}/{}".format(
-                self.export_conf["CONFIG"]["DAAN_ES_HOST"],
-                self.export_conf["CONFIG"]["DAAN_ES_PORT"],
-                self.export_conf["CONFIG"]["DAAN_ES_OUTPUT_INDEX"],
-            )
+        # add config vars from data processing
+        statusItems.update(self.data_processing_env.get_pretty_processing_conf_vars())
+        # add config vars from exporter
+        statusItems.update(self.exporter.get_pretty_export_conf_vars())
+        # add status definitions URL
         statusItems["Definitions"]: statusDefinitionsURL
 
         contextTexts = [
@@ -435,5 +422,7 @@ if __name__ == "__main__":
         "../config-example.yml"
     )  # TODO: how do we get this to work from within a workflow with the correct config?
     status_handler = ExampleStatusHandler(config)
-    status_monitor = SlackStatusMonitor(config, status_handler)
+    data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
+    exporter = ExampleExporter(config, status_handler)
+    status_monitor = SlackStatusMonitor(config, status_handler, data_processing_env, exporter)
     status_monitor._monitor_status()
