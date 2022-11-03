@@ -11,14 +11,29 @@ from dane_workflows.status import (
     ErrorCode,
 )
 from dane_workflows.util.base_util import check_setting, load_config_or_die
+from datetime import datetime
+
+from dane_workflows.data_processing import (
+    DataProcessingEnvironment,
+    ExampleDataProcessingEnvironment,
+)
+from dane_workflows.exporter import Exporter, ExampleExporter
 
 
 logger = logging.getLogger(__name__)
 
 
 class StatusMonitor(ABC):
-    def __init__(self, config: dict, status_handler: StatusHandler):
+    def __init__(
+        self,
+        config: dict,
+        status_handler: StatusHandler,
+        data_processing_env: DataProcessingEnvironment,
+        exporter: Exporter,
+    ):
         self.status_handler = status_handler
+        self.data_processing_env = data_processing_env
+        self.exporter = exporter
         self.config = (
             config["STATUS_MONITOR"]["CONFIG"]
             if "CONFIG" in config["STATUS_MONITOR"]
@@ -30,6 +45,18 @@ class StatusMonitor(ABC):
             logger.critical("Malconfigured, quitting...")
             sys.exit()
 
+    def monitor_status(self):
+        """Retrieves the status and error information and communicates this via the
+        chosen method (implemented in _send_status())
+        """
+        status_info = self._check_status()
+        satus_report = self._get_detailed_status_report(
+            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
+        )
+        formatted_status_info = self._format_status_info(status_info)
+        formatted_status_report = self._format_status_report(satus_report)
+        self._send_status(formatted_status_info, formatted_status_report)
+
     def _validate_config(self) -> bool:
         """Check that the config contains the necessary parameters"""
         logger.info(f"Validating {self.__class__.__name__} config")
@@ -37,7 +64,7 @@ class StatusMonitor(ABC):
         try:
             assert all(
                 [x in self.config for x in ["INCLUDE_EXTRA_INFO"]]
-            ), "StatusMonitor.INCLUDE_EXTRA_INFO missing"
+            ), "StatusMonitor config misses required fields"
 
             assert check_setting(
                 self.config["INCLUDE_EXTRA_INFO"], bool
@@ -52,13 +79,15 @@ class StatusMonitor(ABC):
     def _check_status(self):
         """Collects status information about the tasks stored in the status_handler and returns it in a dict
         Returns: dict with status information
-        "Last batch processed" - processing batch ID of the last batch processed
-        "Last source batch retrieved" - source batch ID of the last batch retrieved from the data provider
-        "Status information for last batch processed" - dict of statuses and their counts for the last batch processed
-        "Error information for last batch processed"- dict of error codes and their counts for the last batch processed
-        "Status information for last source batch retrieved" - dict of statuses and their counts for the last batch
+
+        "Last batch processed:" - processing batch ID of the last batch processed
+        "Last batch processed :information_source: Status info:" - dict of statuses and their counts for the last batch processed
+        "Last batch processed :warning: Error info:" - dict of error codes and their counts for the last batch processed
+
+        "Last src batch retrieved:" - source batch ID of the last batch retrieved from the data provider
+        "Last src batch retrieved :information_source: Status info:" - dict of error codes and their counts for the last batch
         retrieved from the data provider
-        "Error information for last source batch retrieved"- dict of error codes and their counts for the last batch
+        "Last src batch retrieved :warning: Error info:" - dict of statuses and their counts for the last batch
         retrieved from the data provider
         """
 
@@ -69,18 +98,32 @@ class StatusMonitor(ABC):
         logger.info(f"LAST SOURCE BATCH {last_source_batch_id}")
 
         return {
+            # get last batch retrieved
+            "Last src batch retrieved": last_source_batch_id,
             # get last batch processed
             "Last batch processed": last_proc_batch_id,
-            # get last batch retrieved
-            "Last source batch retrieved": last_source_batch_id,
+            # get status and error code information for last batch retrieved
+            "Last src batch retrieved :information_source: Status info": {
+                f"{ProcessingStatus(status).name}": count
+                for status, count in self.status_handler.get_status_counts_for_source_batch_id(
+                    last_source_batch_id
+                ).items()
+            },
             # get status and error code information for last batch processed
-            "Status information for last batch processed": {
+            "Last batch processed :information_source: Status info": {
                 f"{ProcessingStatus(status).name}": count
                 for status, count in self.status_handler.get_status_counts_for_proc_batch_id(
                     last_proc_batch_id
                 ).items()
             },
-            "Error information for last batch processed": (
+            "Last src batch retrieved :warning: Error info": {
+                (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
+                for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
+                    last_source_batch_id
+                ).items()
+                if error_code
+            },
+            "Last batch processed :warning: Error info": (
                 {
                     f"{ErrorCode(error_code).name}" if error_code else "N/A": count
                     for error_code, count in self.status_handler.get_error_code_counts_for_proc_batch_id(
@@ -89,20 +132,6 @@ class StatusMonitor(ABC):
                     if error_code
                 }
             ),
-            # get status and error code information for last batch retrieved
-            "Status information for last source batch retrieved": {
-                f"{ProcessingStatus(status).name}": count
-                for status, count in self.status_handler.get_status_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-            },
-            "Error information for last source batch retrieved": {
-                (f"{ErrorCode(error_code).name}" if error_code else "N/A"): count
-                for error_code, count in self.status_handler.get_error_code_counts_for_source_batch_id(
-                    last_source_batch_id
-                ).items()
-                if error_code
-            },
         }
 
     def _get_detailed_status_report(self, include_extra_info):
@@ -123,7 +152,7 @@ class StatusMonitor(ABC):
             uncompleted_batch_ids,
         ) = self.status_handler.get_completed_semantic_source_batch_ids()
 
-        error_report = {
+        status_report = {
             "Completed semantic source batch IDs": completed_batch_ids,
             "Uncompleted semantic source batch IDs": uncompleted_batch_ids,
             "Current semantic source batch ID": self.status_handler.get_name_of_source_batch_id(
@@ -134,11 +163,11 @@ class StatusMonitor(ABC):
         }
 
         if include_extra_info:
-            error_report[
+            status_report[
                 "Status overview per extra info"
             ] = self.status_handler.get_status_counts_per_extra_info_value()
 
-        return error_report
+        return status_report
 
     @abstractmethod
     def _format_status_info(self, status_info: dict):
@@ -154,36 +183,37 @@ class StatusMonitor(ABC):
         return formatted_status_info
 
     @abstractmethod
-    def _format_error_report(self, error_report: dict):
+    def _format_status_report(self, status_report: dict):
         """Format the detailed status info
         Args:
-        - error_report - detailed status information
+        - status_report - detailed status information
         Returns:
         - formatted strings for the detailed error report
         """
         raise NotImplementedError("All StatusMonitors should implement this")
 
     @abstractmethod
-    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+    def _send_status(self, formatted_status: str, formatted_status_report: str = None):
         """Send status
         Args:
         - formatted_status - a string containing the formatted status information
-        - formatted_error_report - Optional: a string containing the formatted error report
+        - formatted_status_report - Optional: a string containing the formatted error report
         Returns:
-        """
-        raise NotImplementedError("All StatusMonitors should implement this")
-
-    @abstractmethod
-    def monitor_status(self):
-        """Retrieves the status and error information and communicates this via the
-        chosen method (implemented in _send_status())
         """
         raise NotImplementedError("All StatusMonitors should implement this")
 
 
 class ExampleStatusMonitor(StatusMonitor):
-    def __init__(self, config: dict, status_handler: StatusHandler):
-        super(ExampleStatusMonitor, self).__init__(config, status_handler)
+    def __init__(
+        self,
+        config: dict,
+        status_handler: StatusHandler,
+        data_processing_env: DataProcessingEnvironment,
+        exporter: Exporter,
+    ):
+        super(ExampleStatusMonitor, self).__init__(
+            config, status_handler, data_processing_env, exporter
+        )
 
     def _validate_config(self):
         return StatusMonitor._validate_config(self)  # no additional config needed
@@ -200,42 +230,42 @@ class ExampleStatusMonitor(StatusMonitor):
         formatted_status_info = json.dumps(status_info)
         return formatted_status_info
 
-    def _format_error_report(self, error_report: dict):
+    def _format_status_report(self, status_report: dict):
         """Format the detailed status info as json
         Args:
-        - error_report - detailed status information
+        - stauts_report - detailed status information
         Returns:
-        - formatted strings for the detailed error report
+        - formatted strings for the detailed stauts report
         """
         # basic superclass implementation is a json dump
-        formatted_error_report = json.dumps(error_report)
+        formatted_status_report = json.dumps(status_report)
 
-        return formatted_error_report
+        return formatted_status_report
 
-    def _send_status(self, formatted_status: str, formatted_error_report: str = None):
+    def _send_status(self, formatted_status: str, formatted_status_report: str = None):
         """Send status to terminal
         Args:
         - formatted_status - a string containing the formatted status information
-        - formatted_error_report - Optional: a string containing the formatted error report
+        - formatted_status_report - Optional: a string containing the formatted error report
         Returns:
         """
         logger.info("STATUS INFO:")
         logger.info(formatted_status)
-        logger.info("DETAILED ERROR REPORT:")
-        logger.info(formatted_error_report)
-
-    def monitor_status(self):
-        """Retrieves the status and error information and communicates this via the terminal"""
-        status_info = self._check_status()
-        error_report = self._get_detailed_status_report(status_info)
-        formatted_status_info = self._format_status_info(status_info)
-        formatted_error_report = self._format_error_report(error_report)
-        self._send_status(formatted_status_info, formatted_error_report)
+        logger.info("DETAILED STATUS REPORT:")
+        logger.info(formatted_status_report)
 
 
 class SlackStatusMonitor(StatusMonitor):
-    def __init__(self, config: dict, status_handler: StatusHandler):
-        super(SlackStatusMonitor, self).__init__(config, status_handler)
+    def __init__(
+        self,
+        config: dict,
+        status_handler: StatusHandler,
+        data_processing_env: DataProcessingEnvironment,
+        exporter: Exporter,
+    ):
+        super(SlackStatusMonitor, self).__init__(
+            config, status_handler, data_processing_env, exporter
+        )
 
     def _validate_config(self):
         """Check that the config contains the necessary parameters for Slack"""
@@ -274,7 +304,7 @@ class SlackStatusMonitor(StatusMonitor):
     def _create_divider():
         """ " Create a divider block
         Returns:
-        - returns a divider block
+        - returns a divider block as expected by the Slack API
         """
         return {"type": "divider"}
 
@@ -285,9 +315,71 @@ class SlackStatusMonitor(StatusMonitor):
         - text:
             the text to put in the text block
         Returns:
-        - returns the text block
+        - returns the text block as expected by the Slack API
         """
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
+
+    @staticmethod
+    def _create_markdown_fields_section_block(status_info: dict):
+        """Add a block of type section containing a list of mrkdwn fields
+        Args:
+        - status_info_items:
+            a list of items from status_info
+        Returns:
+        - returns the section block as expected by the Slack API
+        """
+        fields = []
+        for key, value in status_info.items():
+            match value:
+                case str() as value:
+                    text = f"*{key}:*\n{value}"
+                case int() as value:
+                    text = f"*{key}:*\n{value}"
+                case {} as value:
+                    if "error" in key.lower():
+                        text = f"*{key}:*\nN/A :large_green_circle:"
+                    else:
+                        text = f"*{key}:*\nN/A"
+                case dict() as value:
+                    if "error" in key.lower():
+                        text = f"*{key}:*\n:red_circle:\n"
+                    else:
+                        text = f"*{key}:*\n"
+                    for status_or_error, count in value.items():
+                        text += f"{status_or_error}: {count}\n"
+                case _:
+                    raise TypeError(
+                        f"{type(value)} is of the wrong type or this type is not implemented"
+                    )
+            fields.append({"type": "mrkdwn", "text": text})
+        return {"type": "section", "fields": fields}
+
+    def _create_context_block(self):
+        """Add a block of type context containing a mrkdwn field listing relevant values from config
+        Args:
+        - contextText: a string containing markdown formatted text
+        Returns:
+        - returns the context block as expected by the Slack API
+        """
+        statusDefinitionsURL = (
+            "https://beng.slack.com/files/T03P55HJ9/F042WDNGD5W?origin_team=T03P55HJ9"
+        )
+        statusItems = {}
+        # add config vars from data processing
+        statusItems.update(self.data_processing_env.get_pretty_config())
+        # add config vars from exporter
+        statusItems.update(self.exporter.get_pretty_config())
+        # add status definitions URL
+        statusItems["Definitions"]: statusDefinitionsURL
+
+        contextTexts = [
+            "*{}*: {}".format(key, value) for (key, value) in statusItems.items()
+        ]
+        contextText = "\n".join(contextTexts)
+        return {
+            "type": "context",
+            "elements": [{"type": "mrkdwn", "text": contextText}],
+        }
 
     def _format_status_info(self, status_info: dict):
         """Format the basis status information for slack
@@ -297,44 +389,33 @@ class SlackStatusMonitor(StatusMonitor):
         - formatted string for the basic status information
         """
         slack_status_info_list = []
+        slack_status_info_list.append(self._create_divider())
         slack_status_info_list.append(
             self._create_basic_text_block(
-                f'*{self.config["WORKFLOW_NAME"]} STATUS REPORT*'
+                f'*Status report for workflow*:\n{self.config["WORKFLOW_NAME"]}'
             )
         )
-        for key, value in status_info.items():
-            match value:
-                case str() as value:
-                    text = f"*{key}*: {value}"
-                case int() as value:
-                    text = f"*{key}*: {value}"
-                case dict() as value:
-                    text = f"*{key}*\n"
-                    for status_or_error, count in value.items():
-                        text += f"{status_or_error}: {count}\n"
-                case _:
-                    raise TypeError(
-                        f"{type(value)} is of the wrong type or this type is not implemented"
-                    )
-            slack_status_info_list.append(self._create_divider())
-            slack_status_info_list.append(self._create_basic_text_block(text))
+        slack_status_info_list.append(
+            self._create_markdown_fields_section_block(status_info)
+        )
+        slack_status_info_list.append(self._create_context_block())
 
         return slack_status_info_list
 
-    def _format_error_report(self, error_report: dict):
+    def _format_status_report(self, status_report: dict):
         """Format the detailed status info for slack
         Args:
-        - error_report - detailed status information
+        - status_report - detailed status information
         Returns:
         - formatted strings for the detailed error report
         """
-        return json.dumps(error_report)
+        return json.dumps(status_report)
 
-    def _send_status(self, formatted_status, formatted_error_report: str = None):
+    def _send_status(self, formatted_status, formatted_status_report: str = None):
         """Send status to slack
         Args:
         - formatted_status - a string containing the formatted status information
-        - formatted_error_report - Optional: a string containing the formatted error report
+        - formatted_status_report - Optional: a string containing the formatted error report
         Returns:
         """
         slack_client = WebClient(self.config["TOKEN"])
@@ -342,34 +423,32 @@ class SlackStatusMonitor(StatusMonitor):
         slack_client.chat_postMessage(
             channel=self.config["CHANNEL"],
             blocks=formatted_status,
-            icon_emoji=":ghost:",
         )
 
-        if formatted_error_report:  # only upload error file if has content
-            slack_client.files_upload(
-                content=formatted_error_report,
-                channels=[self.config["CHANNEL"]],
-                initial_comment="For more details, review this error file",
+        if formatted_status_report:  # only upload error file if has content
+            datetime_now = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+            filename_status_report = "{}-{}.json".format(
+                self.config["WORKFLOW_NAME"], datetime_now
             )
-
-    def monitor_status(self):
-        """Retrieves the status and error information and communicates this via the terminal"""
-        status_info = self._check_status()
-        error_report = self._get_detailed_status_report(
-            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
-        )
-        formatted_status_info = self._format_status_info(status_info)
-        formatted_error_report = self._format_error_report(error_report)
-        self._send_status(formatted_status_info, formatted_error_report)
+            slack_client.files_upload(
+                content=formatted_status_report,
+                filename=filename_status_report,
+                channels=[self.config["CHANNEL"]],
+                initial_comment="*Satus file* (based on current status database)",
+            )
 
 
 if __name__ == "__main__":
-
     """Call this to test your chosen StatusMonitor independently.
     It will then run on the status handler specified in the config"""
 
     config = load_config_or_die(
         "../config-example.yml"
-    )  # TODO: how do we get this to work from within a workflow with the correct config?
+    )
     status_handler = ExampleStatusHandler(config)
-    status_monitor = SlackStatusMonitor(config, status_handler)
+    data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
+    exporter = ExampleExporter(config, status_handler)
+    status_monitor = SlackStatusMonitor(
+        config, status_handler, data_processing_env, exporter
+    )
+    status_monitor.monitor_status()

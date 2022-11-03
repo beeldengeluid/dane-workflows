@@ -3,6 +3,8 @@ from mockito import when, verify, ANY
 import slack_sdk
 
 from dane_workflows.status_monitor import ExampleStatusMonitor, SlackStatusMonitor
+from dane_workflows.data_processing import ExampleDataProcessingEnvironment
+from dane_workflows.exporter import ExampleExporter
 
 from dane_workflows.status import (
     ExampleStatusHandler,
@@ -16,7 +18,11 @@ from dane_workflows.status import (
 
 def test__check_status(config):
     status_handler = ExampleStatusHandler(config)
-    status_monitor = ExampleStatusMonitor(config, status_handler)
+    data_processing_env = ExampleDataProcessingEnvironment
+    exporter = ExampleExporter
+    status_monitor = ExampleStatusMonitor(
+        config, status_handler, data_processing_env, exporter
+    )
     dummy_last_proc_batch_id = 1
     dummy_last_source_batch_id = 2
 
@@ -74,7 +80,7 @@ def test__check_status(config):
         status_info = status_monitor._check_status()
 
         assert status_info["Last batch processed"] == dummy_last_proc_batch_id
-        assert status_info["Last source batch retrieved"] == dummy_last_source_batch_id
+        assert status_info["Last src batch retrieved"] == dummy_last_source_batch_id
 
         for key in dummy_status_counts_for_proc_batch:
             assert (
@@ -116,7 +122,11 @@ def test__check_status(config):
 @pytest.mark.parametrize("include_extra_info", [False, True])
 def test__get_detailed_status_report(config, include_extra_info):
     status_handler = ExampleStatusHandler(config)
-    status_monitor = ExampleStatusMonitor(config, status_handler)
+    data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
+    exporter = ExampleExporter(config, status_handler)
+    status_monitor = ExampleStatusMonitor(
+        config, status_handler, data_processing_env, exporter
+    )
 
     dummy_incomplete = ["dummy-incomplete-1", "dummy-incomplete-2"]
     dummy_complete = [
@@ -249,12 +259,18 @@ def test_validate_config(
         ] = include_extra_info
 
     status_handler = ExampleStatusHandler(config_to_validate)
+    data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
+    exporter = ExampleExporter(config, status_handler)
 
     if expect_error:
         with pytest.raises(SystemExit):
-            SlackStatusMonitor(config_to_validate, status_handler)
+            SlackStatusMonitor(
+                config_to_validate, status_handler, data_processing_env, exporter
+            )
     else:
-        assert SlackStatusMonitor(config_to_validate, status_handler)
+        assert SlackStatusMonitor(
+            config_to_validate, status_handler, data_processing_env, exporter
+        )
 
 
 @pytest.mark.parametrize(
@@ -269,22 +285,35 @@ def test_validate_config(
                 },
             },
             [
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": "*TESTING STATUS REPORT*"},
-                },
                 {"type": "divider"},
                 {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": "*Last batch processed*: 12345"},
-                },
-                {"type": "divider"},
-                {
-                    "type": "section",
                     "text": {
+                        "text": "*Status report for workflow*:\nTESTING",
                         "type": "mrkdwn",
-                        "text": "*Status information for last batch processed*\nSTATUS INFO 1: 12\nSTATUS INFO 2: 4\n",
                     },
+                    "type": "section",
+                },
+                {
+                    "fields": [
+                        {"text": "*Last batch processed:*\n12345", "type": "mrkdwn"},
+                        {
+                            "text": "*Status information for last batch processed:*\nN/A",
+                            "type": "mrkdwn",
+                        },
+                    ],
+                    "type": "section",
+                },
+                {
+                    "elements": [
+                        {
+                            "text": "*EXPORTER...DAAN_ES_INPUT_INDEX*: "
+                            "http://dummy_es_host:0/dummy_es_input_index\n"
+                            "*EXPORTER...DAAN_ES_OUTPUT_INDEX*: "
+                            "http://dummy_es_host:0/dummy_es_output_index",
+                            "type": "mrkdwn",
+                        }
+                    ],
+                    "type": "context",
                 },
             ],
         )
@@ -292,64 +321,83 @@ def test_validate_config(
 )
 def test_format_status_info(slack_monitor_config, status_info: dict, expected_output):
     status_handler = ExampleStatusHandler(slack_monitor_config)
-    slack_status_monitor = SlackStatusMonitor(slack_monitor_config, status_handler)
+    data_processing_env = ExampleDataProcessingEnvironment(
+        slack_monitor_config, status_handler
+    )
+    exporter = ExampleExporter(slack_monitor_config, status_handler)
+    slack_status_monitor = SlackStatusMonitor(
+        slack_monitor_config, status_handler, data_processing_env, exporter
+    )
     status_info_list = slack_status_monitor._format_status_info(status_info)
     assert type(status_info_list) == list
     assert status_info_list == expected_output
 
 
 @pytest.mark.parametrize(
-    "formatted_error_report", [None, "a formatted error report string"]
+    "formatted_status_report", [None, "a formatted satus report string"]
 )
-def test__send_status(config, formatted_error_report):
+def test__send_status(config, formatted_status_report):
     status_handler = ExampleStatusHandler(config)
+    data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
+    exporter = ExampleExporter(config, status_handler)
     config["STATUS_MONITOR"]["CONFIG"] = {
         "TOKEN": "a token",
         "CHANNEL": "a channel",
         "WORKFLOW_NAME": "a workflow name",
         "INCLUDE_EXTRA_INFO": False,
     }
-    status_monitor = SlackStatusMonitor(config, status_handler)
+    status_monitor = SlackStatusMonitor(
+        config, status_handler, data_processing_env, exporter
+    )
     dummy_formatted_status = "dummy formatted status"
 
     with when(slack_sdk.WebClient).chat_postMessage(
-        channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY
+        channel=ANY,
+        blocks=dummy_formatted_status,
     ), when(slack_sdk.WebClient).files_upload(
-        content=formatted_error_report, channels=ANY, initial_comment=ANY
+        content=formatted_status_report, channels=ANY, filename=ANY, initial_comment=ANY
     ):
 
-        status_monitor._send_status(dummy_formatted_status, formatted_error_report)
+        status_monitor._send_status(dummy_formatted_status, formatted_status_report)
 
         verify(slack_sdk.WebClient, times=1).chat_postMessage(
-            channel=ANY, blocks=dummy_formatted_status, icon_emoji=ANY
+            channel=ANY,
+            blocks=dummy_formatted_status,
         )
         verify(
-            slack_sdk.WebClient, times=1 if formatted_error_report else 0
+            slack_sdk.WebClient, times=1 if formatted_status_report else 0
         ).files_upload(
-            content=formatted_error_report, channels=ANY, initial_comment=ANY
+            content=formatted_status_report,
+            filename=ANY,
+            channels=ANY,
+            initial_comment=ANY,
         )
 
 
 @pytest.mark.parametrize("include_extra_info", [False, True])
 def test_monitor_status(config, include_extra_info):
     status_handler = ExampleStatusHandler(config)
+    data_processing_env = ExampleDataProcessingEnvironment(config, status_handler)
+    exporter = ExampleExporter(config, status_handler)
     config["STATUS_MONITOR"]["CONFIG"] = {
         "TOKEN": "a token",
         "CHANNEL": "a channel",
         "WORKFLOW_NAME": "a workflow name",
         "INCLUDE_EXTRA_INFO": include_extra_info,
     }
-    status_monitor = SlackStatusMonitor(config, status_handler)
+    status_monitor = SlackStatusMonitor(
+        config, status_handler, data_processing_env, exporter
+    )
 
     dummy_status = {"dummy-key": "dummy-value"}
-    dummy_error_report = {"dummy-error-key": "dummy-error-value"}
+    dummy_satus_report = {"dummy-error-key": "dummy-error-value"}
     dummy_formatted_status_info = "dummy formatted info"
-    dummy_formatted_error_report = "dummy formatted error report"
+    dummy_formatted_status_report = "dummy formatted error report"
 
     with when(status_monitor)._check_status().thenReturn(dummy_status), when(
         status_monitor
     )._get_detailed_status_report(include_extra_info=include_extra_info).thenReturn(
-        dummy_error_report
+        dummy_satus_report
     ), when(
         status_monitor
     )._format_status_info(
@@ -358,14 +406,14 @@ def test_monitor_status(config, include_extra_info):
         dummy_formatted_status_info
     ), when(
         status_monitor
-    )._format_error_report(
-        dummy_error_report
+    )._format_status_report(
+        dummy_satus_report
     ).thenReturn(
-        dummy_formatted_error_report
+        dummy_formatted_status_report
     ), when(
         status_monitor
     )._send_status(
-        dummy_formatted_status_info, dummy_formatted_error_report
+        dummy_formatted_status_info, dummy_formatted_status_report
     ):
 
         status_monitor.monitor_status()
@@ -375,7 +423,7 @@ def test_monitor_status(config, include_extra_info):
             include_extra_info=include_extra_info
         )
         verify(status_monitor, times=1)._format_status_info(dummy_status)
-        verify(status_monitor, times=1)._format_error_report(dummy_error_report)
+        verify(status_monitor, times=1)._format_status_report(dummy_satus_report)
         verify(status_monitor, times=1)._send_status(
-            dummy_formatted_status_info, dummy_formatted_error_report
+            dummy_formatted_status_info, dummy_formatted_status_report
         )

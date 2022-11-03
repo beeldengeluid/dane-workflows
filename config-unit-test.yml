@@ -13,6 +13,11 @@ PROC_ENV:
   TYPE: dane_workflows.data_processing.ExampleDataProcessingEnvironment
 EXPORTER:
   TYPE: dane_workflows.exporter.ExampleExporter
+  CONFIG:
+    DAAN_ES_HOST: "dummy_es_host"
+    DAAN_ES_PORT: 0000
+    DAAN_ES_INPUT_INDEX: "dummy_es_input_index"
+    DAAN_ES_OUTPUT_INDEX: "dummy_es_output_index"
 STATUS_MONITOR:  # optional, for monitoring 
   TYPE: dane_workflows.status_monitor.ExampleStatusMonitor
   CONFIG:

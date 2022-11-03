@@ -27,6 +27,9 @@ class Exporter(ABC):
 
         self.status_handler = status_handler
 
+    def get_pretty_config(self) -> dict:
+        return self.config
+
     @abstractmethod
     def _validate_config(self) -> bool:
         raise NotImplementedError("Implement to validate the config")
@@ -57,3 +60,13 @@ class ExampleExporter(Exporter):
             )
         )
         return True
+
+    def get_pretty_config(self) -> dict:
+        pretty_conf = {}
+        pretty_conf[
+            "EXPORTER...DAAN_ES_INPUT_INDEX"
+        ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_INPUT_INDEX"]}'
+        pretty_conf[
+            "EXPORTER...DAAN_ES_OUTPUT_INDEX"
+        ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_OUTPUT_INDEX"]}'
+        return pretty_conf

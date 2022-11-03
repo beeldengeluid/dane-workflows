@@ -124,6 +124,9 @@ class DataProcessingEnvironment(ABC):
         self.status_handler.persist_or_die(status_rows)
         return results
 
+    def get_pretty_config(self) -> dict:
+        return self.config
+
     @abstractmethod
     def fetch_result_of_target_id(self, target_id: str) -> Optional[ProcessingResult]:
         raise NotImplementedError(
@@ -220,6 +223,7 @@ class DANEEnvironment(DataProcessingEnvironment):
             ), f"DANE_STATUS_DIR: {self.config['DANE_STATUS_DIR']} auto creation failed"
         except AssertionError as e:
             logger.error(f"Configuration error: {str(e)}")
+            logger.error(f"config:{self.config}")
             return False
 
         return True
@@ -365,6 +369,14 @@ class DANEEnvironment(DataProcessingEnvironment):
                 else ProcessingStatus.ERROR
             )
         return status_rows
+
+    def get_pretty_config(self) -> dict:
+        pretty_conf = {}
+        pretty_conf["PROC_ENV...DANE_HOST"] = f'{self.config["DANE_HOST"]}/manage'
+        pretty_conf[
+            "PROC_ENV...DANE_ES_HOST"
+        ] = f'http://{self.config["DANE_ES_HOST"]}:{self.config["DANE_ES_PORT"]}/{self.config["DANE_ES_INDEX"]}'
+        return pretty_conf
 
 
 class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
