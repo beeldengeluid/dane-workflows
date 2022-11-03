@@ -416,7 +416,7 @@ def test_monitor_status(config, include_extra_info):
         dummy_formatted_status_info, dummy_formatted_status_report
     ):
 
-        status_monitor._monitor_status()
+        status_monitor.monitor_status()
 
         verify(status_monitor, times=1)._check_status()
         verify(status_monitor, times=1)._get_detailed_status_report(

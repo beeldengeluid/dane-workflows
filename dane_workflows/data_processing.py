@@ -124,7 +124,7 @@ class DataProcessingEnvironment(ABC):
         self.status_handler.persist_or_die(status_rows)
         return results
 
-    def get_pretty_processing_conf_vars(self) -> dict:
+    def get_pretty_config(self) -> dict:
         return self.config
 
     @abstractmethod
@@ -370,15 +370,13 @@ class DANEEnvironment(DataProcessingEnvironment):
             )
         return status_rows
 
-    def get_pretty_processing_conf_vars(self):
-        pretty_config_dict = {}
-        pretty_config_dict[
-            "PROC_ENV...DANE_HOST"
-        ] = f'{self.config["DANE_HOST"]}/manage'
-        pretty_config_dict[
+    def get_pretty_config(self) -> dict:
+        pretty_conf = {}
+        pretty_conf["PROC_ENV...DANE_HOST"] = f'{self.config["DANE_HOST"]}/manage'
+        pretty_conf[
             "PROC_ENV...DANE_ES_HOST"
         ] = f'http://{self.config["DANE_ES_HOST"]}:{self.config["DANE_ES_PORT"]}/{self.config["DANE_ES_INDEX"]}'
-        return pretty_config_dict
+        return pretty_conf
 
 
 class ExampleDataProcessingEnvironment(DataProcessingEnvironment):

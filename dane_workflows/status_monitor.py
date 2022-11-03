@@ -45,6 +45,18 @@ class StatusMonitor(ABC):
             logger.critical("Malconfigured, quitting...")
             sys.exit()
 
+    def monitor_status(self):
+        """Retrieves the status and error information and communicates this via the
+        chosen method (implemented in _send_status())
+        """
+        status_info = self._check_status()
+        satus_report = self._get_detailed_status_report(
+            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
+        )
+        formatted_status_info = self._format_status_info(status_info)
+        formatted_status_report = self._format_status_report(satus_report)
+        self._send_status(formatted_status_info, formatted_status_report)
+
     def _validate_config(self) -> bool:
         """Check that the config contains the necessary parameters"""
         logger.info(f"Validating {self.__class__.__name__} config")
@@ -156,18 +168,6 @@ class StatusMonitor(ABC):
             ] = self.status_handler.get_status_counts_per_extra_info_value()
 
         return status_report
-
-    def _monitor_status(self):
-        """Retrieves the status and error information and communicates this via the
-        chosen method (implemented in _send_status())
-        """
-        status_info = self._check_status()
-        satus_report = self._get_detailed_status_report(
-            include_extra_info=self.config["INCLUDE_EXTRA_INFO"]
-        )
-        formatted_status_info = self._format_status_info(status_info)
-        formatted_status_report = self._format_status_report(satus_report)
-        self._send_status(formatted_status_info, formatted_status_report)
 
     @abstractmethod
     def _format_status_info(self, status_info: dict):
@@ -366,9 +366,9 @@ class SlackStatusMonitor(StatusMonitor):
         )
         statusItems = {}
         # add config vars from data processing
-        statusItems.update(self.data_processing_env.get_pretty_processing_conf_vars())
+        statusItems.update(self.data_processing_env.get_pretty_config())
         # add config vars from exporter
-        statusItems.update(self.exporter.get_pretty_export_conf_vars())
+        statusItems.update(self.exporter.get_pretty_config())
         # add status definitions URL
         statusItems["Definitions"]: statusDefinitionsURL
 
@@ -451,4 +451,4 @@ if __name__ == "__main__":
     status_monitor = SlackStatusMonitor(
         config, status_handler, data_processing_env, exporter
     )
-    status_monitor._monitor_status()
+    status_monitor.monitor_status()

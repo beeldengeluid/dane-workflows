@@ -27,7 +27,7 @@ class Exporter(ABC):
 
         self.status_handler = status_handler
 
-    def get_pretty_export_conf_vars(self):
+    def get_pretty_config(self) -> dict:
         return self.config
 
     @abstractmethod
@@ -61,12 +61,12 @@ class ExampleExporter(Exporter):
         )
         return True
 
-    def get_pretty_export_conf_vars(self):
-        pretty_processing_vars = {}
-        pretty_processing_vars[
+    def get_pretty_config(self) -> dict:
+        pretty_conf = {}
+        pretty_conf[
             "EXPORTER...DAAN_ES_INPUT_INDEX"
         ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_INPUT_INDEX"]}'
-        pretty_processing_vars[
+        pretty_conf[
             "EXPORTER...DAAN_ES_OUTPUT_INDEX"
         ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_OUTPUT_INDEX"]}'
-        return pretty_processing_vars
+        return pretty_conf

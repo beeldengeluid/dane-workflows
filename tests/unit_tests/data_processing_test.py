@@ -111,7 +111,7 @@ def test_monitor_batch(config, proc_batch_id):
         ]
     ),
 )
-def test_get_pretty_processing_conf_vars(
+def test_get_pretty_config(
     conf_number, output, dane_data_processing_config, example_processing_config
 ):
     configs_to_use = [dane_data_processing_config, example_processing_config]
@@ -123,4 +123,4 @@ def test_get_pretty_processing_conf_vars(
     data_processing_env = data_processing_env_class(
         configs_to_use[conf_number], status_handler
     )
-    assert data_processing_env.get_pretty_processing_conf_vars() == output
+    assert data_processing_env.get_pretty_config() == output
