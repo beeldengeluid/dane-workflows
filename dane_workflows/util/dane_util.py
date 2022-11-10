@@ -133,6 +133,7 @@ class DANEHandler:
         )
         batch_data = self._load_batch_file(proc_batch_id)
         if batch_data is None:
+            logger.warning("Could not load any docs from file")
             return None
 
         # extract al docs (failed/success) from the persisted proc_batch file
@@ -236,13 +237,16 @@ class DANEHandler:
             body=query,
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,  # timeout reached! (60 seconds)
         )  # TODO better exception handling (OR fix by moving this to DANE-serve API)
-        if len(result["hits"]["hits"]) <= 0:
+        if result["hits"]["total"]["value"] <= 0:
+            logger.info(
+                f"No (more) tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
+            )
             return all_tasks
         else:
             for hit in result["hits"]["hits"]:
                 all_tasks.append(self._to_task(hit))
             logger.info(
-                f"Done fetching all tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
+                f"Found {len(all_tasks)} results for batch {self._get_proc_batch_name(proc_batch_id)} trying to find some more"
             )
             return self.get_tasks_of_batch(
                 proc_batch_id, all_tasks, offset + size, size
@@ -251,7 +255,6 @@ class DANEHandler:
     def get_results_of_batch(
         self, proc_batch_id: int, all_results: List[Result], offset=0, size=200
     ) -> List[Result]:
-        logger.info("Entering function")
         logger.info(
             f"Fetching results of proc_batch: {self._get_proc_batch_name(proc_batch_id)} from DANE index"
         )
@@ -264,13 +267,16 @@ class DANEHandler:
             body=query,
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,
         )
-        if len(result["hits"]["hits"]) <= 0:
+        if result["hits"]["total"]["value"] <= 0:
+            logger.info(
+                f"No (more) results for batch {self._get_proc_batch_name(proc_batch_id)}"
+            )
             return all_results
         else:
             for hit in result["hits"]["hits"]:
                 all_results.append(self._to_result(hit))
             logger.info(
-                f"Done fetching all results for batch {self._get_proc_batch_name(proc_batch_id)}"
+                f"Found {len(all_results)} results for batch {self._get_proc_batch_name(proc_batch_id)} trying to find some more"
             )
             return self.get_results_of_batch(
                 proc_batch_id, all_results, offset + size, size
@@ -314,7 +320,7 @@ class DANEHandler:
 
     # TODO check out if DANE.TASK.from_json also works well instead of this dataclass
     def _to_task(self, es_hit: dict) -> Task:
-        logger.info("Entering function")
+        logger.info("Converting ES hit to Task")
         return Task(
             es_hit["_id"],
             es_hit["_source"]["task"]["msg"],
@@ -328,7 +334,7 @@ class DANEHandler:
 
     # TODO check out if DANE.TASK.from_json also works well instead of this dataclass
     def _to_result(self, es_hit: dict) -> Result:
-        logger.info("Entering function")
+        logger.info("Converting ES hit to Result")
         return Result(
             es_hit["_id"],
             es_hit["_source"]["result"]["generator"],
@@ -347,7 +353,6 @@ class DANEHandler:
     def register_batch(
         self, proc_batch_id: int, batch: List[StatusRow]
     ) -> Optional[List[StatusRow]]:
-        logger.info("Entering function")
         logger.info(f"Trying to insert {len(batch)} documents")
         dane_docs = self._to_dane_docs(batch)
         r = requests.post(self.DANE_DOCS_ENDPOINT, data=json.dumps(dane_docs))
@@ -363,14 +368,16 @@ class DANEHandler:
                 dane_batch_fn = self._get_batch_file_name(proc_batch_id)
                 logger.critical(f"Could not persist DANE response to : {dane_batch_fn}")
                 sys.exit()
-            return self._to_updated_status_rows(batch, json_data)
+            return self._dane_registration_response_to_status_rows(batch, json_data)
         return None
 
     # sets the DANE.Document._id as proc_id for each status row and sets status to REGISTERED
-    def _to_updated_status_rows(
+    def _dane_registration_response_to_status_rows(
         self, batch: List[StatusRow], dane_resp: dict
     ) -> List[StatusRow]:
-        logger.info("Entering function")
+        logger.info(
+            "DANE registered a batch of docs, converting its response to status rows"
+        )
         if dane_resp is None:
             logger.warning("DANE response was empty")
             return None
