@@ -237,7 +237,7 @@ class DANEHandler:
             body=query,
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,  # timeout reached! (60 seconds)
         )  # TODO better exception handling (OR fix by moving this to DANE-serve API)
-        if result["hits"]["total"]["value"] <= 0:
+        if len(result["hits"]["hits"]) <= 0:
             logger.info(
                 f"No (more) tasks for batch {self._get_proc_batch_name(proc_batch_id)}"
             )
@@ -246,7 +246,7 @@ class DANEHandler:
             for hit in result["hits"]["hits"]:
                 all_tasks.append(self._to_task(hit))
             logger.info(
-                f"Found {len(all_tasks)} results for batch {self._get_proc_batch_name(proc_batch_id)} trying to find some more"
+                f"Found {len(all_tasks)} tasks for batch {self._get_proc_batch_name(proc_batch_id)} trying to find some more"
             )
             return self.get_tasks_of_batch(
                 proc_batch_id, all_tasks, offset + size, size
@@ -267,7 +267,7 @@ class DANEHandler:
             body=query,
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,
         )
-        if result["hits"]["total"]["value"] <= 0:
+        if len(result["hits"]["hits"]) <= 0:
             logger.info(
                 f"No (more) results for batch {self._get_proc_batch_name(proc_batch_id)}"
             )
@@ -292,7 +292,7 @@ class DANEHandler:
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,
         )
         logger.info(f"Found: {result['hits']['total']['value']} results")
-        if result["hits"]["total"]["value"] == 1:
+        if len(result["hits"]["hits"]) == 1:
             data = result["hits"]["hits"][0]
             logger.debug(data)
             return self._to_result(data)
@@ -310,7 +310,7 @@ class DANEHandler:
             request_timeout=self.DANE_ES_QUERY_TIMEOUT,
         )
         logger.info(f"Found: {result['hits']['total']['value']} tasks")
-        if result["hits"]["total"]["value"] == 1:
+        if len(result["hits"]["hits"]) == 1:
             data = result["hits"]["hits"][0]
             logger.debug(data)
             return self._to_task(data)
