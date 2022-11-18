@@ -32,7 +32,7 @@ class TaskType(Enum):
     ASR = "ASR"  # Automatic Speech Recognition
     DOWNLOAD = "DOWNLOAD"  # Download
     BG_DOWNLOAD = "BG_DOWNLOAD"  # Download via B&G playout-proxy
-    FINGERPRINT = "FINGERPRINT"  # Fingerprint extraction
+    FINGERPRINT_EXTRACTION = "FINGERPRINT_EXTRACTION"  # Fingerprint extraction
 
 
 @unique
