@@ -62,11 +62,5 @@ class ExampleExporter(Exporter):
         return True
 
     def get_pretty_config(self) -> dict:
-        pretty_conf = {}
-        pretty_conf[
-            "EXPORTER...DAAN_ES_INPUT_INDEX"
-        ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_INPUT_INDEX"]}'
-        pretty_conf[
-            "EXPORTER...DAAN_ES_OUTPUT_INDEX"
-        ] = f'http://{self.config["DAAN_ES_HOST"]}:{self.config["DAAN_ES_PORT"]}/{self.config["DAAN_ES_OUTPUT_INDEX"]}'
-        return pretty_conf
+        logger.warning("ExampleExporter has no settings in config")
+        return {}

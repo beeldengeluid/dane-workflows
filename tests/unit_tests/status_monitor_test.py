@@ -305,13 +305,7 @@ def test_validate_config(
                 },
                 {
                     "elements": [
-                        {
-                            "text": "*EXPORTER...DAAN_ES_INPUT_INDEX*: "
-                            "http://dummy_es_host:0/dummy_es_input_index\n"
-                            "*EXPORTER...DAAN_ES_OUTPUT_INDEX*: "
-                            "http://dummy_es_host:0/dummy_es_output_index",
-                            "type": "mrkdwn",
-                        }
+                        {'type': 'mrkdwn', 'text': ''}
                     ],
                     "type": "context",
                 },
