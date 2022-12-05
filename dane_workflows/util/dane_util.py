@@ -355,6 +355,8 @@ class DANEHandler:
     ) -> Optional[List[StatusRow]]:
         logger.info(f"Trying to insert {len(batch)} documents")
         dane_docs = self._to_dane_docs(batch)
+        logger.debug(self.DANE_DOCS_ENDPOINT)
+        logger.debug(dane_docs)
         r = requests.post(self.DANE_DOCS_ENDPOINT, data=json.dumps(dane_docs))
         if r.status_code == 200:
             # persist the response containing DANE.Document._id
@@ -369,6 +371,9 @@ class DANEHandler:
                 logger.critical(f"Could not persist DANE response to : {dane_batch_fn}")
                 sys.exit()
             return self._dane_registration_response_to_status_rows(batch, json_data)
+        else:
+            logger.error(f"Returned status {r.status_code}")
+            logger.error(r.text)
         return None
 
     # sets the DANE.Document._id as proc_id for each status row and sets status to REGISTERED
@@ -708,7 +713,7 @@ class DANEHandler:
     # NOTE: DANE will create a new document if the target_id + creator_id does not exist,
     # meaning it's important to assign a unique DANE_BATCH_PREFIX for each DANE env/server (API)
     def _to_dane_docs(self, status_rows: List[StatusRow]) -> Optional[List[dict]]:
-        logger.info("Entering function")
+        logger.info("Converting status rows to DANE docs")
         if not status_rows or len(status_rows) == 0:
             logger.warning("No data provided")
             return None

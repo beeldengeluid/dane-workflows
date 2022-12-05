@@ -304,9 +304,7 @@ def test_validate_config(
                     "type": "section",
                 },
                 {
-                    "elements": [
-                        {'type': 'mrkdwn', 'text': ''}
-                    ],
+                    "elements": [{"type": "mrkdwn", "text": ""}],
                     "type": "context",
                 },
             ],
