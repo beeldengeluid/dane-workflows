@@ -16,6 +16,7 @@ from dane_workflows.util.dane_query_util import (
     result_of_target_id_query,
     task_of_target_id_query,
 )
+from dane_workflows.util.prov_util import Provernance
 
 logger = logging.getLogger(__name__)
 
@@ -332,7 +333,18 @@ class DANEHandler:
             es_hit["_source"]["role"]["parent"],  # refers to the DANE.Document._id
         )
 
-    # TODO check out if DANE.TASK.from_json also works well instead of this dataclass
+    def _to_provernance(self, es_hit:dict) -> Provernance:
+        logger.info("Converting ES hit to Provernance")
+        return Provernance(
+            activity = "Process Data"
+            actor = {"id":es_hit["_source"]["result"]["generator"]["id"],
+                    "type":es_hit["_source"]["result"]["generator"]["type"],
+                    "name":es_hit["_source"]["result"]["generator"]["name"],
+                    "homepage":es_hit["_source"]["result"]["generator"]["homepage"]}
+            generated = 
+             
+        )
+
     def _to_result(self, es_hit: dict) -> Result:
         logger.info("Converting ES hit to Result")
         return Result(

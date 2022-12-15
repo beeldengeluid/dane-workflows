@@ -191,7 +191,7 @@ class ExampleDataProvider(DataProvider):
         return batch_data
 
     def get_provernance(self) -> dict:
-        return Provernance(activity="ProvideData", type=self.__class__.__name__)   
+        return Provernance(activity="ProvideData", actor=self.__class__.__name__)   
 
 
 

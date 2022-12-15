@@ -72,4 +72,4 @@ class ExampleExporter(Exporter):
         return {}
 
     def get_provernance(self) -> dict:
-        return Provernance(activity="ExportASR", type=self.__class__.__name__)   
+        return Provernance(activity="ExportASR", actor=self.__class__.__name__)   

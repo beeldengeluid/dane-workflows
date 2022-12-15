@@ -10,6 +10,7 @@ from dane_workflows.util.base_util import (
     load_config_or_die,
     auto_create_dir,
 )
+from dane_workflows.util.prov_util import Provernance
 import sqlite3
 from datetime import datetime
 from sqlite3 import Error  # superclass of all sqlite3 Exceptions
@@ -252,7 +253,7 @@ class StatusHandler(ABC):
         raise NotImplementedError("Requires implementation")
 
     @abstractmethod
-    def get_provernance(self) -> dict:
+    def get_provernance(self) -> Provernance:
         raise NotImplementedError("Requires implementation")
 
     """ --------------------- SOURCE BATCH SPECIFIC FUNCTIONS ------------------ """
@@ -442,10 +443,7 @@ class ExampleStatusHandler(StatusHandler):
         return ([], [])  # TODO implement
     
     def get_provernance(self) -> dict:
-        return {"type":"ExampleStatusHandler",
-        "action":"HandleStatus"
-        }
-
+        return Provernance(activity="HandleStatus", actor=self.__class__.__name__)   
 
 
 class SQLiteStatusHandler(StatusHandler):
@@ -799,9 +797,8 @@ class SQLiteStatusHandler(StatusHandler):
             return None
 
     def get_provernance(self) -> dict:
-        return {"type":"ExampleStatusHandler",
-        "action":"HandleStatus"
-        }
+        return Provernance(activity="HandleStatus", actor=self.__class__.__name__)   
+
 
     """ ----------------------- SQLLITE SPECIFIC FUNCTIONS -------------------------- """
 

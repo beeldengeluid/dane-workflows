@@ -204,7 +204,7 @@ class StatusMonitor(ABC):
         raise NotImplementedError("All StatusMonitors should implement this")
 
     @abstractmethod
-    def get_provernance(self) -> dict:
+    def get_provernance(self) -> Provernance:
         raise NotImplementedError("Requires implementation")
 
 
@@ -260,9 +260,8 @@ class ExampleStatusMonitor(StatusMonitor):
         logger.info(formatted_status_report)
 
     def get_provernance(self) -> dict:
-        return {"type":"ExampleStatusMonitor",
-        "action":"MonitorStatus",
-        }
+        return Provernance(activity="MonitorStatus", actor=self.__class__.__name__)   
+
 
 class SlackStatusMonitor(StatusMonitor):
     def __init__(
@@ -447,7 +446,7 @@ class SlackStatusMonitor(StatusMonitor):
             )
     
     def get_provernance(self) -> dict:
-        return Provernance(activity="HandleStatus", type=self.__class__.__name__)   
+        return Provernance(activity="MonitorStatus", actor=self.__class__.__name__)   
 
 
 

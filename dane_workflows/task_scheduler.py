@@ -7,6 +7,7 @@ from dane_workflows.data_processing import DataProcessingEnvironment, Processing
 from dane_workflows.exporter import Exporter
 from dane_workflows.status import StatusHandler, StatusRow
 from dane_workflows.status_monitor import StatusMonitor
+from dane_workflows.util.prov_util import Provernance
 
 
 """
@@ -380,7 +381,5 @@ class TaskScheduler(object):
         else:
             return False
 
-    def get_prov(self) -> dict:
-        return {"type":"Task_scheduler",
-                "action":"SceduleTask"
-                }
+    def get_provernance(self) -> dict:
+        return Provernance(activity="SceduleTask", actor=self.__class__.__name__)   
