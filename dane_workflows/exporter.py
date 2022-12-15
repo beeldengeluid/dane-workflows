@@ -4,6 +4,7 @@ from typing import List
 import logging
 from dane_workflows.data_processing import ProcessingResult
 from dane_workflows.status import StatusHandler, ProcessingStatus
+from dane_workflows.util.prov_util import Provernance
 
 """
 This class is owned by a TaskScheduler to export results obtained from a processing environment (such as DANE)
@@ -38,6 +39,11 @@ class Exporter(ABC):
     def export_results(self, results: List[ProcessingResult]) -> bool:
         raise NotImplementedError("Implement to export results")
 
+    @abstractmethod
+    def get_provernance(self) -> Provernance:
+        raise NotImplementedError("All Exporters should implement this")
+
+
 
 class ExampleExporter(Exporter):
     def __init__(self, config, status_handler: StatusHandler, unit_test: bool = False):
@@ -64,3 +70,6 @@ class ExampleExporter(Exporter):
     def get_pretty_config(self) -> dict:
         logger.warning("ExampleExporter has no settings in config")
         return {}
+
+    def get_provernance(self) -> dict:
+        return Provernance(activity="ExportASR", type=self.__class__.__name__)   

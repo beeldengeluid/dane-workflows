@@ -10,6 +10,7 @@ from dane_workflows.util.base_util import (
 )
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus, ErrorCode
 from dane_workflows.util.dane_util import DANEHandler, Task, Result, TaskType
+from dane_workflows.util.prov_util import Provernance
 from time import sleep
 from dataclasses import dataclass
 
@@ -162,6 +163,11 @@ class DataProcessingEnvironment(ABC):
         self, proc_batch_id: int
     ) -> Optional[List[ProcessingResult]]:
         raise NotImplementedError("Implement to fetch batch results")
+
+    @abstractmethod
+    def get_provernance(self) -> Provernance:
+        raise NotImplementedError("All Data processing environments should implement this")
+
 
 
 class DANEEnvironment(DataProcessingEnvironment):
@@ -378,6 +384,8 @@ class DANEEnvironment(DataProcessingEnvironment):
         ] = f'http://{self.config["DANE_ES_HOST"]}:{self.config["DANE_ES_PORT"]}/{self.config["DANE_ES_INDEX"]}'
         return pretty_conf
 
+    def get_provernance(self) -> dict:
+        return Provernance(activity="DataProcessing", actor=self.__class__.__name__)   
 
 class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
     def __init__(self, config, status_handler: StatusHandler, unit_test: bool = False):
@@ -431,6 +439,10 @@ class ExampleDataProcessingEnvironment(DataProcessingEnvironment):
 
     def fetch_result_of_target_id(self, target_id: str) -> Optional[ProcessingResult]:
         return None  # TODO implement
+
+    def get_provernance(self) -> dict:
+        return Provernance(activity="DataProcessing", actor=self.__class__.__name__)   
+
 
 
 # Test your DataProcessingEnvironment in isolation

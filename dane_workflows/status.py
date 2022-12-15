@@ -251,6 +251,10 @@ class StatusHandler(ABC):
             uncompleted batches"""
         raise NotImplementedError("Requires implementation")
 
+    @abstractmethod
+    def get_provernance(self) -> dict:
+        raise NotImplementedError("Requires implementation")
+
     """ --------------------- SOURCE BATCH SPECIFIC FUNCTIONS ------------------ """
 
     def get_current_source_batch(self):
@@ -436,6 +440,12 @@ class ExampleStatusHandler(StatusHandler):
         self,
     ) -> Tuple[Optional[List[str]], Optional[List[str]]]:
         return ([], [])  # TODO implement
+    
+    def get_provernance(self) -> dict:
+        return {"type":"ExampleStatusHandler",
+        "action":"HandleStatus"
+        }
+
 
 
 class SQLiteStatusHandler(StatusHandler):
@@ -787,6 +797,11 @@ class SQLiteStatusHandler(StatusHandler):
             return group_counts
         else:
             return None
+
+    def get_provernance(self) -> dict:
+        return {"type":"ExampleStatusHandler",
+        "action":"HandleStatus"
+        }
 
     """ ----------------------- SQLLITE SPECIFIC FUNCTIONS -------------------------- """
 

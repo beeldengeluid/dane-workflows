@@ -7,6 +7,7 @@ from dane_workflows.util.base_util import (
     check_setting,
     load_config_or_die,
 )
+from dane_workflows.util.prov_util import Provernance
 from dane_workflows.status import StatusHandler, StatusRow, ProcessingStatus
 
 """
@@ -52,6 +53,11 @@ class DataProvider(ABC):
         self, source_batch_id: int
     ) -> Optional[List[StatusRow]]:
         raise NotImplementedError("All DataProviders should implement this")
+
+    @abstractmethod
+    def get_provernance(self) -> dict:
+        return NotImplementedError("All DataProviders should implement this")   
+
 
     """
     ------------------------------ PUBLIC CLASS METHODS --------------------
@@ -183,6 +189,10 @@ class ExampleDataProvider(DataProvider):
         logger.info("fetched source batch data")
         # logger.info(batch_data)
         return batch_data
+
+    def get_provernance(self) -> dict:
+        return Provernance(activity="ProvideData", type=self.__class__.__name__)   
+
 
 
 # Test your DataProvider in isolation

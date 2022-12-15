@@ -379,3 +379,8 @@ class TaskScheduler(object):
             return True
         else:
             return False
+
+    def get_prov(self) -> dict:
+        return {"type":"Task_scheduler",
+                "action":"SceduleTask"
+                }

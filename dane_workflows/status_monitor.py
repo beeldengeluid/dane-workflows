@@ -11,6 +11,7 @@ from dane_workflows.status import (
     ErrorCode,
 )
 from dane_workflows.util.base_util import check_setting, load_config_or_die
+from dane_workflows.util.prov_util import Provernance
 from datetime import datetime
 
 from dane_workflows.data_processing import (
@@ -202,6 +203,10 @@ class StatusMonitor(ABC):
         """
         raise NotImplementedError("All StatusMonitors should implement this")
 
+    @abstractmethod
+    def get_provernance(self) -> dict:
+        raise NotImplementedError("Requires implementation")
+
 
 class ExampleStatusMonitor(StatusMonitor):
     def __init__(
@@ -254,6 +259,10 @@ class ExampleStatusMonitor(StatusMonitor):
         logger.info("DETAILED STATUS REPORT:")
         logger.info(formatted_status_report)
 
+    def get_provernance(self) -> dict:
+        return {"type":"ExampleStatusMonitor",
+        "action":"MonitorStatus",
+        }
 
 class SlackStatusMonitor(StatusMonitor):
     def __init__(
@@ -436,6 +445,10 @@ class SlackStatusMonitor(StatusMonitor):
                 channels=[self.config["CHANNEL"]],
                 initial_comment="*Satus file* (based on current status database)",
             )
+    
+    def get_provernance(self) -> dict:
+        return Provernance(activity="HandleStatus", type=self.__class__.__name__)   
+
 
 
 if __name__ == "__main__":
