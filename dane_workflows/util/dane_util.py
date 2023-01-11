@@ -538,18 +538,20 @@ class DANEHandler:
             logger.info("-" * 50)
             if not self._contains_running_tasks(tasks_of_batch):
                 logger.info(
-                    f"All tasks were done, monitoring proc_batch {proc_batch_id} stopped"
+                    "There are no tasks QUEUED or CREATED, checking UNFINISHED DEPENDENCIES"
                 )
-                break
-
-            # now also check if we are not waiting for failed dependencies
-            if not self._check_unfinished_dependencies_ok(
-                tasks_of_batch, self.DANE_TASK_ID
-            ):
-                logger.warning(
-                    f"The remaining tasks all have failed dependencies; monitoring proc_batch {proc_batch_id} stopped"
-                )
-                break
+                # no tasked are QUEUED or CREATED, now check if the UNFINISHED_DEPENDENCIES are ok
+                if not self._check_unfinished_dependencies_ok(
+                    tasks_of_batch, self.DANE_TASK_ID
+                ):  # now also check if we are not waiting for failed dependencies
+                    logger.info(
+                        f"There are no unifinished dependencies pending; monitoring proc_batch {proc_batch_id} stopped"
+                    )
+                    break
+                else:
+                    logger.info(
+                        "There are still unfinished dependencies, continuing..."
+                    )
 
             logger.info("Not done, continuing to monitor...")
 
@@ -583,7 +585,7 @@ class DANEHandler:
                         lambda x: x.state
                         in [
                             TaskState.QUEUED.value,
-                            TaskState.UNFINISHED_DEPENDENCY.value,
+                            # TaskState.UNFINISHED_DEPENDENCY.value,
                             TaskState.CREATED.value,
                         ],
                         tasks_of_batch,
@@ -609,8 +611,8 @@ class DANEHandler:
         )
         # it's ok if there are no tasks with unfinished deps (it's handled in the monitor function)
         if not tasks_with_unfinished_deps:
-            logger.info("There are no tasks with unfinished dependencies")
-            return True
+            logger.info("There are no tasks remaining with unfinished dependencies")
+            return False
 
         logger.info(
             f"Checking {len(tasks_with_unfinished_deps)} tasks with unfinished dependencies"
@@ -620,7 +622,10 @@ class DANEHandler:
             dependant_tasks = self._get_tasks_of_document(t.doc_id, leaf_task)
             failed_count += 1 if self._contains_failed_deps(dependant_tasks) else 0
 
-        # as long as not all dependencies have failed, it's ok
+        # else: as long as not all dependencies have failed, it's ok
+        logger.info(
+            f"There are {len(tasks_with_unfinished_deps)} of which {failed_count} failed"
+        )
         return len(tasks_with_unfinished_deps) > failed_count
 
     # check if any dependant tasks failed
