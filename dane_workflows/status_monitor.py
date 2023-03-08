@@ -3,6 +3,7 @@ import json
 import sys
 import logging
 from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 from dane_workflows.status import (
     StatusHandler,
@@ -420,22 +421,28 @@ class SlackStatusMonitor(StatusMonitor):
         """
         slack_client = WebClient(self.config["TOKEN"])
 
-        slack_client.chat_postMessage(
-            channel=self.config["CHANNEL"],
-            blocks=formatted_status,
-        )
+        try:
+            slack_client.chat_postMessage(
+                channel=self.config["CHANNEL"],
+                blocks=formatted_status,
+            )
+        except SlackApiError:
+            logger.exception("Could not send status message to Slack!")
 
         if formatted_status_report:  # only upload error file if has content
             datetime_now = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
             filename_status_report = "{}-{}.json".format(
                 self.config["WORKFLOW_NAME"], datetime_now
             )
-            slack_client.files_upload(
-                content=formatted_status_report,
-                filename=filename_status_report,
-                channels=[self.config["CHANNEL"]],
-                initial_comment="*Satus file* (based on current status database)",
-            )
+            try:
+                slack_client.files_upload(
+                    content=formatted_status_report,
+                    filename=filename_status_report,
+                    channels=[self.config["CHANNEL"]],
+                    initial_comment="*Satus file* (based on current status database)",
+                )
+            except SlackApiError:
+                logger.exception("Could not send status report to Slack!")
 
 
 if __name__ == "__main__":
