@@ -74,7 +74,9 @@ class DataProvider(ABC):
             new_source_batch = self.fetch_source_batch_data(
                 self.status_handler.get_cur_source_batch_id() + 1
             )
-            logger.info(f"New source_batch is ok: {new_source_batch is not None}")
+            logger.info(
+                f"New source_batch is ok: {new_source_batch is not None}"
+            )  # could be []
             if new_source_batch:  # make the StatusHandler track the new batch
                 if called_recursively:
                     # we have a problem, as we are in an infinite loop
