@@ -331,7 +331,12 @@ class DANEEnvironment(DataProcessingEnvironment):
         # First assign the doc_id, i.e. proc_id, to each processing result via the list of tasks
         task_id_to_doc_id = {task.id: task.doc_id for task in tasks_of_batch}
         for result in results_of_batch:
-            result.doc_id = task_id_to_doc_id[result.task_id]
+            if result.task_id in task_id_to_doc_id:
+                result.doc_id = task_id_to_doc_id[result.task_id]
+            else:
+                logger.warning(
+                    f"{result.task_id} not found in tasks of batch! (possibly manually removed from ES)"
+                )
 
         # now convert the Result objects to ProcessingResult objects
         processing_results = []
@@ -361,11 +366,13 @@ class DANEEnvironment(DataProcessingEnvironment):
             )
             return None
         # Task.doc_id is used for more generic proc_id
+        # NOTE: in case tasks were (manually) removed in DANE ES len(tasks_of_batch)
+        # could be smaller than len(status_rows)!
         proc_id_to_task = {task.doc_id: task for task in tasks_of_batch}
         for row in status_rows:
             row.status = (
                 ProcessingStatus.PROCESSED
-                if proc_id_to_task[row.proc_id].state == 200
+                if proc_id_to_task.get(row.proc_id, {"state": 500}).state == 200
                 else ProcessingStatus.ERROR
             )
         return status_rows
