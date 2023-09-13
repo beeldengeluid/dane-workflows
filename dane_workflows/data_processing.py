@@ -372,7 +372,8 @@ class DANEEnvironment(DataProcessingEnvironment):
         for row in status_rows:
             row.status = (
                 ProcessingStatus.PROCESSED
-                if proc_id_to_task.get(row.proc_id, {"state": 500}).state == 200
+                if row.proc_id in proc_id_to_task
+                and proc_id_to_task[row.proc_id].state == 200
                 else ProcessingStatus.ERROR
             )
         return status_rows
