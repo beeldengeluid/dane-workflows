@@ -33,6 +33,10 @@ class TaskType(Enum):
     DOWNLOAD = "DOWNLOAD"  # Download
     BG_DOWNLOAD = "BG_DOWNLOAD"  # Download via B&G playout-proxy
     FINGERPRINT_EXTRACTION = "FINGERPRINT_EXTRACTION"  # Fingerprint extraction
+    VISXP_PREP = "VISXP_PREP"  # dane-video-segmentation-worker
+    VIDEO_SEGMENTATION = (
+        "VIDEO_SEGMENTATION"  # dane-video-segmentation-worker (after renamed in worker)
+    )
 
 
 @unique
@@ -101,10 +105,17 @@ class DANEHandler:
         self.BATCH_PREFIX = config["DANE_BATCH_PREFIX"]
 
         # TODO implement new endpoint in DANE-server API to avoid calling ES directly
-        self.DANE_ES = Elasticsearch(
-            host=config["DANE_ES_HOST"],
-            port=config["DANE_ES_PORT"],
-        )
+        dane_es_user = config.get("DANE_ES_USER", None)
+        dane_es_pw = config.get("DANE_ES_PW", None)
+        es_settings = {
+            "host": config["DANE_ES_HOST"],
+            "port": config["DANE_ES_PORT"],
+            "basic_auth": (dane_es_user, dane_es_pw),  # NOT not tested yet
+        }
+        if not dane_es_user:
+            es_settings.pop("basic_auth")
+
+        self.DANE_ES = Elasticsearch(**es_settings)
         self.DANE_ES_INDEX = config["DANE_ES_INDEX"]
         self.DANE_ES_QUERY_TIMEOUT = config["DANE_ES_QUERY_TIMEOUT"]
 
