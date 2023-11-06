@@ -34,6 +34,7 @@ class TaskType(Enum):
     BG_DOWNLOAD = "BG_DOWNLOAD"  # Download via B&G playout-proxy
     FINGERPRINT_EXTRACTION = "FINGERPRINT_EXTRACTION"  # Fingerprint extraction
     VISXP_PREP = "VISXP_PREP"  # dane-video-segmentation-worker
+    VISXP_EXTRACT = "VISXP_EXTRACT"  # dane-video-segmentation-worker
     VIDEO_SEGMENTATION = (
         "VIDEO_SEGMENTATION"  # dane-video-segmentation-worker (after renamed in worker)
     )
