@@ -90,15 +90,17 @@ class DANEHandler:
         # TODO validate_config
         self.DANE_TASK_ID = config["DANE_TASK_ID"]
         self.DANE_HOST = config["DANE_HOST"]
+        self.DANE_SERVER_PROTOCOL = config.get("DANE_SERVER_PROTOCOL", "http")
+        self.DANE_SERVER_BASE_URL = f"{self.DANE_SERVER_PROTOCOL}://{self.DANE_HOST}"
 
-        self.DANE_API = f"http://{self.DANE_HOST}/api"
+        self.DANE_API = f"{self.DANE_SERVER_BASE_URL}/DANE"
         self.DANE_UI = (
-            f"http://{self.DANE_HOST}/manage"  # only for friendly debug messages
+            f"{self.DANE_SERVER_BASE_URL}/manage"  # only for friendly debug messages
         )
 
-        self.DANE_DOC_ENDPOINT = f"http://{self.DANE_HOST}/DANE/document/"
-        self.DANE_DOCS_ENDPOINT = f"http://{self.DANE_HOST}/DANE/documents/"
-        self.DANE_TASK_ENDPOINT = f"http://{self.DANE_HOST}/DANE/task/"
+        self.DANE_DOC_ENDPOINT = f"{self.DANE_API}/document/"
+        self.DANE_DOCS_ENDPOINT = f"{self.DANE_API}/documents/"
+        self.DANE_TASK_ENDPOINT = f"{self.DANE_API}/task/"
 
         self.STATUS_DIR = config["DANE_STATUS_DIR"]
         self.MONITOR_INTERVAL = config["DANE_MONITOR_INTERVAL"]
