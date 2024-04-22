@@ -6,7 +6,7 @@ from yaml import load, FullLoader
 from yaml.scanner import ScannerError
 from pathlib import Path
 from importlib import import_module
-from typing import Optional, Tuple
+from typing import Tuple
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ LOG_FORMAT = "%(asctime)s|%(levelname)s|%(process)d|%(module)s|%(funcName)s|%(li
 
 
 # Call this first thing in your main.py to extract the default CMD line options and config YAML
-def extract_exec_params() -> Optional[Tuple[dict, Namespace]]:
+def extract_exec_params() -> Tuple[dict, Namespace]:
     parser = ArgumentParser(description="DANE workflow")
     parser.add_argument("--cfg", action="store", dest="cfg", default="config.yml")
     parser.add_argument("--log", action="store", dest="loglevel", default="DEBUG")

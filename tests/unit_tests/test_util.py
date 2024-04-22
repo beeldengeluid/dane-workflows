@@ -1,4 +1,5 @@
 from dane_workflows.status import ProcessingStatus, StatusRow, ErrorCode
+from typing import Optional
 
 
 class LoggerMock(object):
@@ -21,7 +22,7 @@ class LoggerMock(object):
 def new_batch(
     source_batch_id: int,
     status: ProcessingStatus,
-    proc_error_code: ErrorCode = None,
+    proc_error_code: Optional[ErrorCode] = None,
     size: int = 100,
 ):
     offset = source_batch_id * size

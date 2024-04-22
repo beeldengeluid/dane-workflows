@@ -34,7 +34,7 @@ class TaskScheduler(object):
         data_provider: Type[DataProvider],
         data_processing_env: Type[DataProcessingEnvironment],
         exporter: Type[Exporter],
-        status_monitor: Type[StatusMonitor] = None,
+        status_monitor: Optional[Type[StatusMonitor]] = None,
         unit_test: bool = False,
     ):
         self.config = config

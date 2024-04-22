@@ -19,4 +19,4 @@ flake8
 black --check .
 
 # check type annotations (configured in pyproject.toml)
-# mypy .
+mypy .

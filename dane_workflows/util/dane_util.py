@@ -190,7 +190,7 @@ class DANEHandler:
     """
 
     def _get_tasks_of_document(
-        self, doc_id: str, leaf_task_to_omit: str = None
+        self, doc_id: str, leaf_task_to_omit: Optional[str] = None
     ) -> List[Task]:
         logger.info(
             f"Fetching tasks of document {doc_id}, filtering out {leaf_task_to_omit}"

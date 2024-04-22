@@ -4,7 +4,7 @@ import sys
 import logging
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-
+from typing import Optional
 from dane_workflows.status import (
     StatusHandler,
     ExampleStatusHandler,
@@ -194,7 +194,9 @@ class StatusMonitor(ABC):
         raise NotImplementedError("All StatusMonitors should implement this")
 
     @abstractmethod
-    def _send_status(self, formatted_status: str, formatted_status_report: str = None):
+    def _send_status(
+        self, formatted_status: str, formatted_status_report: Optional[str] = None
+    ):
         """Send status
         Args:
         - formatted_status - a string containing the formatted status information
@@ -243,7 +245,9 @@ class ExampleStatusMonitor(StatusMonitor):
 
         return formatted_status_report
 
-    def _send_status(self, formatted_status: str, formatted_status_report: str = None):
+    def _send_status(
+        self, formatted_status: str, formatted_status_report: Optional[str] = None
+    ):
         """Send status to terminal
         Args:
         - formatted_status - a string containing the formatted status information
@@ -412,7 +416,9 @@ class SlackStatusMonitor(StatusMonitor):
         """
         return json.dumps(status_report)
 
-    def _send_status(self, formatted_status, formatted_status_report: str = None):
+    def _send_status(
+        self, formatted_status, formatted_status_report: Optional[str] = None
+    ):
         """Send status to slack
         Args:
         - formatted_status - a string containing the formatted status information

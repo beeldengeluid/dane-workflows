@@ -286,10 +286,10 @@ class StatusHandler(ABC):
     def update_status_rows(
         self,
         status_rows: List[StatusRow],
-        status: ProcessingStatus = None,
+        status: Optional[ProcessingStatus] = None,
         proc_batch_id=-1,
-        proc_status_msg: str = None,
-        proc_error_code: ErrorCode = None,
+        proc_status_msg: Optional[str] = None,
+        proc_error_code: Optional[ErrorCode] = None,
     ) -> List[StatusRow]:
         for row in status_rows:
             row.status = status if status is not None else row.status
@@ -463,7 +463,7 @@ class SQLiteStatusHandler(StatusHandler):
             ), "SQLiteStatusHandler.DB_FILE"
 
             # auto create the parent dir of the db file
-            db_file_par_dir = Path(self.config["DB_FILE"]).parent
+            db_file_par_dir = str(Path(self.config["DB_FILE"]).parent)
             assert (
                 auto_create_dir(db_file_par_dir) is True
             ), f"DB_FILE: {db_file_par_dir} auto creation failed"
