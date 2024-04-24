@@ -211,6 +211,21 @@ class DANEEnvironment(DataProcessingEnvironment):
             assert check_setting(
                 self.config["DANE_ES_PORT"], int
             ), "DANEEnvironment.DANE_ES_PORT"
+
+            # optional creds for Elasticsearch
+            if "DANE_ES_USER" in self.config:
+                assert check_setting(
+                    self.config["DANE_ES_USER"], str, True
+                ), "DANEEnvironment.DANE_ES_USER"
+            if "DANE_ES_PW" in self.config:
+                assert check_setting(
+                    self.config["DANE_ES_PW"], str, True
+                ), "DANEEnvironment.DANE_ES_PW"
+            if "DANE_ES_SCHEME" in self.config:
+                assert check_setting(
+                    self.config["DANE_ES_SCHEME"], str, True
+                ), "DANEEnvironment.DANE_ES_SCHEME"
+
             assert check_setting(
                 self.config["DANE_ES_INDEX"], str
             ), "DANEEnvironment.DANE_ES_INDEX"

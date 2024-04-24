@@ -110,17 +110,31 @@ class DANEHandler:
         # TODO implement new endpoint in DANE-server API to avoid calling ES directly
         dane_es_user = config.get("DANE_ES_USER", None)
         dane_es_pw = config.get("DANE_ES_PW", None)
+        dane_es_scheme = config.get("DANE_ES_SCHEME", "https")
         es_settings = {
             "host": config["DANE_ES_HOST"],
             "port": config["DANE_ES_PORT"],
-            "basic_auth": (dane_es_user, dane_es_pw),  # NOT not tested yet
+            "http_auth": (dane_es_user, dane_es_pw),  # NOT not tested yet
+            "scheme": dane_es_scheme,
+            "timeout": 30,  # secs
+            "retry_on_timeout": True,
+            "max_retries": 3,
         }
         if not dane_es_user:
-            es_settings.pop("basic_auth")
+            logger.warning("No Elasticsearch credentials found in config")
+            es_settings.pop("http_auth")
+        else:
+            logger.info(f"Found ES user: {dane_es_user}")
 
-        self.DANE_ES = Elasticsearch(**es_settings)
         self.DANE_ES_INDEX = config["DANE_ES_INDEX"]
         self.DANE_ES_QUERY_TIMEOUT = config["DANE_ES_QUERY_TIMEOUT"]
+
+        # finally create the ES instance and test the connection
+        self.DANE_ES = Elasticsearch(**es_settings)
+        try:
+            assert self.DANE_ES.ping()
+        except AssertionError:
+            logger.exception("Invalid Elasticsearch settings, cannot connect")
 
     # NOTE: these files are never cleaned up
     def _get_batch_file_name(self, proc_batch_id: int) -> str:
