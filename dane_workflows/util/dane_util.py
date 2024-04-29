@@ -27,20 +27,6 @@ class DANEBatchState(Enum):
 
 
 @unique
-class TaskType(Enum):
-    NER = "NER"  # Named Entity Recognition
-    ASR = "ASR"  # Automatic Speech Recognition
-    DOWNLOAD = "DOWNLOAD"  # Download
-    BG_DOWNLOAD = "BG_DOWNLOAD"  # Download via B&G playout-proxy
-    FINGERPRINT_EXTRACTION = "FINGERPRINT_EXTRACTION"  # Fingerprint extraction
-    VISXP_PREP = "VISXP_PREP"  # dane-video-segmentation-worker
-    VISXP_EXTRACT = "VISXP_EXTRACT"  # dane-video-segmentation-worker
-    VIDEO_SEGMENTATION = (
-        "VIDEO_SEGMENTATION"  # dane-video-segmentation-worker (after renamed in worker)
-    )
-
-
-@unique
 class TaskState(IntEnum):
     QUEUED = 102  # Task has been sent to a queue, it might be being worked on or held in queue.
     SUCCESS = 200  # Task completed successfully.
@@ -469,8 +455,8 @@ class DANEHandler:
 
     # called by DANEProcessingEnvironment.process_batch()
     def process_batch(self, proc_batch_id: int) -> Tuple[bool, int, str]:
-        task_type = TaskType(self.DANE_TASK_ID)
-        logger.info(f"going to submit {task_type.value} for the following doc IDs")
+        task_type = self.DANE_TASK_ID
+        logger.info(f"going to submit {task_type} for the following doc IDs")
         doc_ids = self._get_doc_ids_of_batch(proc_batch_id)
         logger.info(doc_ids)
         if doc_ids is None:
@@ -481,7 +467,7 @@ class DANEHandler:
             )
         task = {
             "document_id": doc_ids,
-            "key": task_type.value,  # e.g. ASR, DOWNLOAD
+            "key": task_type,  # e.g. ASR, DOWNLOAD
         }
         logger.info(f"Submitting task to {self.DANE_TASK_ENDPOINT}")
         logger.debug(json.dumps(task))
@@ -547,7 +533,7 @@ class DANEHandler:
         tasks_of_batch = []
         while True:  # infinite loop, until there are no more running tasks
             tasks_of_batch = self.get_tasks_of_batch(proc_batch_id, [])
-            task_type = TaskType(self.DANE_TASK_ID)
+            task_type = self.DANE_TASK_ID
             logger.info(f"Found {len(tasks_of_batch)} tasks")
             logger.info("*" * 50)
 
@@ -557,7 +543,7 @@ class DANEHandler:
                 self._log_all_tasks_verbose(status_overview)
 
             # log a status overview per (type of) dane_task (e.g. ASR, DOWNLOAD, etc)
-            logger.info(f"Reporting on the {task_type.value} task")
+            logger.info(f"Reporting on the {task_type} task")
             self._log_status_of_dane_task_type(status_overview, task_type)
 
             # TODO report and work on the dictionary with statusses to return
@@ -726,11 +712,11 @@ class DANEHandler:
         logger.info("Entering function")
         logger.debug(json.dumps(status_overview, indent=4, sort_keys=True))
 
-    def _log_status_of_dane_task_type(self, status_overview, dane_task: TaskType):
+    def _log_status_of_dane_task_type(self, status_overview, dane_task: str):
         logger.info(
-            f"Showing all processing states for current DANE batch for all tasks of type: {dane_task.value}"
+            f"Showing all processing states for current DANE batch for all tasks of type: {dane_task}"
         )
-        states = status_overview.get(dane_task.value, {}).get("states", {})
+        states = status_overview.get(dane_task, {}).get("states", {})
         c_unknown = 0
         for state in states.keys():
             state_count = len(states[state].get("tasks", []))
